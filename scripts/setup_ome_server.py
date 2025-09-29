@@ -25,6 +25,19 @@ def run(cmd: list[str], **kwargs) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, check=True, text=True, **kwargs)
 
 
+def docker_daemon_ready() -> bool:
+    try:
+        run(["docker", "info"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    except FileNotFoundError:
+        return False
+    except subprocess.CalledProcessError as exc:
+        print("[!] Docker is installed but not running. Start Docker Desktop / Engine and ensure WSL integration is enabled if you are on Windows.")
+        if exc.stdout:
+            print(exc.stdout)
+        return False
+    return True
+
+
 def command_available(command: str) -> bool:
     parts = command.split()
     if len(parts) == 1:
@@ -47,6 +60,8 @@ def ensure_requirements() -> None:
             missing.append(command)
     if missing:
         raise SystemExit("Install the missing dependencies listed above and re-run the setup.")
+    if not docker_daemon_ready():
+        raise SystemExit("Start Docker and re-run the setup once the daemon is ready.")
 
 
 def detect_host_ip() -> str:
@@ -116,6 +131,9 @@ def ensure_env_file(force: bool = False) -> Dict[str, str]:
 
 
 def pull_images() -> None:
+    if not docker_daemon_ready():
+        print("[!] Skipping image pull because Docker is not running. Start Docker and run the setup again or pull the image manually later.")
+        return
     try:
         run(["docker", "pull", "airensoft/ovenmediaengine:latest"])
     except subprocess.CalledProcessError as exc:

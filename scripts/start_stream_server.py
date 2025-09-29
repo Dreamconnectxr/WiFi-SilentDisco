@@ -23,6 +23,11 @@ except ImportError:  # pragma: no cover - Tkinter is part of stdlib but optional
 
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
+DOCKER_DAEMON_HINT = (
+    "Docker Desktop/Engine does not appear to be running. Start Docker Desktop and ensure WSL 2 integration "
+    "is enabled if you are on Windows."
+)
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ENV_PATH = REPO_ROOT / ".env"
 GUEST_DIR = REPO_ROOT / "guest"
@@ -153,7 +158,33 @@ class BackgroundHTTPServer:
         return 0.0
 
 
+def _docker_command_output(result: subprocess.CalledProcessError) -> str:
+    output = result.stderr or ""
+    if result.stdout:
+        output = f"{output}\n{result.stdout}" if output else result.stdout
+    return output.strip()
+
+
+def ensure_docker_daemon() -> None:
+    try:
+        subprocess.run(
+            ["docker", "info"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError as exc:  # pragma: no cover - depends on host setup
+        raise RuntimeError("Docker is not installed or not available in PATH") from exc
+    except subprocess.CalledProcessError as exc:
+        output = _docker_command_output(exc)
+        hint = DOCKER_DAEMON_HINT
+        if output:
+            hint = f"{hint}\n\nDocker reported:\n{output}"
+        raise RuntimeError(hint) from exc
+
+
 def run_compose_command(args: Iterable[str]) -> subprocess.CompletedProcess:
+    ensure_docker_daemon()
     cmd = ["docker", "compose", *args]
     try:
         return subprocess.run(cmd, cwd=REPO_ROOT, check=True, capture_output=True, text=True)
@@ -346,8 +377,10 @@ class StreamServerGUI:
             self.status_queue.put(result.stdout)
         except RuntimeError as exc:
             messagebox.showerror("Docker Compose", str(exc))
+            self.status_queue.put(str(exc))
         except subprocess.CalledProcessError as exc:
             messagebox.showerror("Docker Compose", exc.stderr or str(exc))
+            self.status_queue.put(exc.stderr or exc.stdout or str(exc))
         self.refresh_status()
 
     def stop_server(self) -> None:
@@ -356,8 +389,10 @@ class StreamServerGUI:
             self.status_queue.put(result.stdout)
         except RuntimeError as exc:
             messagebox.showerror("Docker Compose", str(exc))
+            self.status_queue.put(str(exc))
         except subprocess.CalledProcessError as exc:
             messagebox.showerror("Docker Compose", exc.stderr or str(exc))
+            self.status_queue.put(exc.stderr or exc.stdout or str(exc))
         self.refresh_status()
 
     def refresh_status(self) -> None:
