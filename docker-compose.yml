@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+  origin:
+    image: airensoft/ovenmediaengine:latest
+    restart: unless-stopped
+    environment:
+      - OME_HOST_IP=${OME_HOST_IP}
+      - OME_ORIGIN_PORT=${OME_ORIGIN_PORT}
+      - OME_RTMP_PROV_PORT=${OME_RTMP_PORT}
+      - OME_SRT_PROV_PORT=${OME_SRT_PORT}
+      - OME_LLHLS_STREAM_PORT=${OME_LLHLS_PORT}
+      - OME_WEBRTC_SIGNALLING_PORT=${OME_LLHLS_PORT}
+      - OME_WEBRTC_SIGNALLING_TLS_PORT=${OME_LLHLS_TLS_PORT}
+      - OME_WEBRTC_TCP_RELAY_PORT=${OME_TURN_PORT}
+      - OME_WEBRTC_CANDIDATE_PORT=${OME_WEBRTC_CANDIDATE_PORT_RANGE}
+    ports:
+      - "${OME_ORIGIN_PORT}:9000/tcp"
+      - "${OME_RTMP_PORT}:1935/tcp"
+      - "${OME_SRT_PORT}:9999/udp"
+      - "${OME_LLHLS_PORT}:3333/tcp"
+      - "${OME_LLHLS_TLS_PORT}:3334/tcp"
+      - "${OME_TURN_PORT}:3478/tcp"
+      - "${OME_WEBRTC_CANDIDATE_PORT_RANGE}:${OME_WEBRTC_CANDIDATE_PORT_RANGE}/udp"
+    command: /opt/ovenmediaengine/bin/OvenMediaEngine -c origin_conf
+    networks:
+      - silent_disco
+
+networks:
+  silent_disco:
+    driver: bridge

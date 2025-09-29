@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Silent Disco Guest Player</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.4.0/dist/hls.min.js" integrity="sha384-X+Xv6Jwn1SiY6fiYPoBN+zzrhWXlpzE0KMC+ZTeFcq+G5saAOK5GiKwMHqmpYyqn" crossorigin="anonymous"></script>
+    <script defer src="sync.js"></script>
+  </head>
+  <body>
+    <main class="container">
+      <header>
+        <h1>Silent Disco</h1>
+        <p>Connect to the host and enjoy the synced audio experience.</p>
+      </header>
+
+      <section class="card">
+        <form id="connection-form">
+          <div class="field">
+            <label for="host">Server host</label>
+            <input id="host" name="host" required placeholder="192.168.0.10" />
+          </div>
+          <div class="field">
+            <label for="llhls-port">LL-HLS/WebRTC port</label>
+            <input id="llhls-port" name="llhls-port" type="number" required value="3333" />
+          </div>
+          <div class="field">
+            <label for="app">Application</label>
+            <input id="app" name="app" required value="app" />
+          </div>
+          <div class="field">
+            <label for="stream">Stream name</label>
+            <input id="stream" name="stream" required value="stream" />
+          </div>
+          <div class="actions">
+            <button type="submit">Connect</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="card metrics">
+        <h2>Sync metrics</h2>
+        <dl>
+          <div>
+            <dt>Status</dt>
+            <dd id="status">Disconnected</dd>
+          </div>
+          <div>
+            <dt>Target latency</dt>
+            <dd><span id="target-latency">–</span> s</dd>
+          </div>
+          <div>
+            <dt>Measured latency</dt>
+            <dd><span id="latency">–</span> s</dd>
+          </div>
+          <div>
+            <dt>Playback rate</dt>
+            <dd><span id="playback-rate">1.00</span>x</dd>
+          </div>
+          <div>
+            <dt>Clock offset</dt>
+            <dd><span id="clock-offset">–</span> ms</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="card">
+        <audio id="player" controls preload="none"></audio>
+      </section>
+
+      <footer>
+        <p class="muted">If the stream stutters refresh the page or press reconnect. The player automatically corrects latency drifts.</p>
+      </footer>
+    </main>
+  </body>
+</html>
