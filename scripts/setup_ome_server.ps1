@@ -306,10 +306,10 @@ function Start-OmeContainer {
         $streamKey = $script:State.StreamKey
 
         $script:State.ConnectionInfo = @{
-            ObsUrl       = "rtmp://$localIp:$rtmpPort/app"
+            ObsUrl       = "rtmp://${localIp}:${rtmpPort}/app"
             ObsStreamKey = $streamKey
-            Vlcllhls     = "http://$localIp:$httpPort/app/$streamKey/llhls.m3u8"
-            Vlchls       = "http://$localIp:$httpPort/app/$streamKey/playlist.m3u8"
+            Vlcllhls     = "http://${localIp}:${httpPort}/app/$streamKey/llhls.m3u8"
+            Vlchls       = "http://${localIp}:${httpPort}/app/$streamKey/playlist.m3u8"
         }
 
         Write-Log -Message 'OvenMediaEngine is running.'
@@ -387,9 +387,9 @@ function Update-DetailsBox {
         $lines += "  Media UDP        : $($ports.WebRtcMedia)"
         $lines += ''
         $lines += 'Tips:'
-        $lines += '  • In OBS, choose the RTMP output mode and paste the URL and stream key above.'
-        $lines += '  • In VLC, use Media → Open Network Stream and paste one of the URLs above.'
-        $lines += '  • Share the HTTP URL with guests on the same network for playback.'
+        $lines += '  - In OBS, choose the RTMP output mode and paste the URL and stream key above.'
+        $lines += '  - In VLC, use Media -> Open Network Stream and paste one of the URLs above.'
+        $lines += '  - Share the HTTP URL with guests on the same network for playback.'
         $box.Lines = $lines
     }
 
