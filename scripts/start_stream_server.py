@@ -1,7 +1,46 @@
 #!/usr/bin/env python3
-#!/usr/bin/env python3
 """Interactive controller for the WiFi Silent Disco streaming stack."""
 from __future__ import annotations
+
+import os
+import sys
+from pathlib import Path
+
+EXPECTED_MAJOR = 3
+EXPECTED_MINOR = 12
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+VENV_DIR = REPO_ROOT / ".venv"
+
+
+def _venv_python_path() -> Path:
+    if os.name == "nt":
+        return VENV_DIR / "Scripts" / "python.exe"
+    return VENV_DIR / "bin" / "python"
+
+
+def ensure_python_runtime() -> None:
+    major, minor, micro = sys.version_info[:3]
+    if (major, minor) == (EXPECTED_MAJOR, EXPECTED_MINOR):
+        return
+
+    venv_python = _venv_python_path()
+    current_exec = Path(sys.executable).resolve()
+    if venv_python.exists() and current_exec != venv_python.resolve():
+        print(
+            "Detected Python"
+            f" {major}.{minor}.{micro}. Restarting with project interpreter {venv_python}..."
+        )
+        os.execv(str(venv_python), [str(venv_python), *sys.argv])
+
+    raise SystemExit(
+        "WiFi Silent Disco requires Python "
+        f"{EXPECTED_MAJOR}.{EXPECTED_MINOR}. Detected {major}.{minor}.{micro}. "
+        "Install the required version and rerun the script."
+    )
+
+
+ensure_python_runtime()
 
 import json
 import queue
@@ -10,7 +49,6 @@ import subprocess
 import threading
 import time
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Dict, Iterable, Optional
 from urllib.error import HTTPError, URLError
 from urllib.request import urlopen
@@ -28,7 +66,6 @@ DOCKER_DAEMON_HINT = (
     "is enabled if you are on Windows."
 )
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
 ENV_PATH = REPO_ROOT / ".env"
 GUEST_DIR = REPO_ROOT / "guest"
 GUEST_DIR.mkdir(parents=True, exist_ok=True)

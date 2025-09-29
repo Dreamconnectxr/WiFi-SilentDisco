@@ -21,7 +21,7 @@ REQUIREMENTS_FILE = REPO_ROOT / "requirements.txt"
 VENV_DIR = REPO_ROOT / ".venv"
 
 EXPECTED_MAJOR = 3
-SUPPORTED_MINOR_VERSIONS = {10, 11, 12}
+EXPECTED_MINOR = 12
 
 REQUIRED_COMMANDS = {
     "docker": "Docker is required to run OvenMediaEngine. Install Docker Desktop (Windows/macOS) or Docker Engine (Linux) and rerun this script.",
@@ -123,11 +123,10 @@ def ensure_requirements(report: SetupReport) -> bool:
 
 def check_python_version(report: SetupReport) -> bool:
     major, minor, micro = sys.version_info[:3]
-    if major != EXPECTED_MAJOR or minor not in SUPPORTED_MINOR_VERSIONS:
-        expected_versions = ", ".join(f"{EXPECTED_MAJOR}.{m}" for m in sorted(SUPPORTED_MINOR_VERSIONS))
+    if major != EXPECTED_MAJOR or minor != EXPECTED_MINOR:
         report.add_error(
             "Unsupported Python version detected. "
-            f"Found {major}.{minor}.{micro}. Install Python {expected_versions} and rerun the setup."
+            f"Found {major}.{minor}.{micro}. Install Python {EXPECTED_MAJOR}.{EXPECTED_MINOR} and rerun the setup."
         )
         return False
     report.add_action(f"Python version {major}.{minor}.{micro} is supported.")
@@ -167,7 +166,7 @@ def ensure_virtualenv(report: SetupReport) -> Path | None:
     if VENV_DIR.exists():
         cfg = _read_pyvenv_cfg(VENV_DIR)
         version = cfg.get("version")
-        if version and not version.startswith(f"{EXPECTED_MAJOR}.{sys.version_info.minor}"):
+        if version and not version.startswith(f"{EXPECTED_MAJOR}.{EXPECTED_MINOR}"):
             report.add_warning(
                 "Existing virtual environment was created with a different Python version and will be recreated."
             )
