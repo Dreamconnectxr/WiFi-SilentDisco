@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Server version="8">
+    <Name>OvenMediaEngine</Name>
+    <Type>origin</Type>
+    <IP>*</IP>
+    <PrivacyProtection>false</PrivacyProtection>
+    <StunServer>stun.ovenmediaengine.com:13478</StunServer>
+
+    <Modules>
+        <HTTP2>
+            <Enable>true</Enable>
+        </HTTP2>
+        <LLHLS>
+            <Enable>true</Enable>
+        </LLHLS>
+    </Modules>
+
+    <Bind>
+        <Providers>
+            <RTMP>
+                <Port>1935</Port>
+                <WorkerCount>1</WorkerCount>
+            </RTMP>
+            <SRT>
+                <Port>9999</Port>
+                <WorkerCount>1</WorkerCount>
+            </SRT>
+            <WebRTC>
+                <Signalling>
+                    <Port>3333</Port>
+                    <TLSPort>3334</TLSPort>
+                    <WorkerCount>1</WorkerCount>
+                </Signalling>
+                <IceCandidates>
+                    <IceCandidate>*:10000-10009/udp</IceCandidate>
+                    <TcpRelay>*:3478</TcpRelay>
+                    <TcpForce>true</TcpForce>
+                    <TcpRelayWorkerCount>1</TcpRelayWorkerCount>
+                </IceCandidates>
+            </WebRTC>
+        </Providers>
+        <Publishers>
+            <LLHLS>
+                <Port>3333</Port>
+                <TLSPort>3334</TLSPort>
+                <WorkerCount>1</WorkerCount>
+            </LLHLS>
+        </Publishers>
+    </Bind>
+
+    <Defaults>
+        <CrossDomains>
+            <Url>*</Url>
+        </CrossDomains>
+    </Defaults>
+
+    <VirtualHosts>
+        <VirtualHost>
+            <Name>default</Name>
+            <Host>
+                <Names>
+                    <Name>*</Name>
+                </Names>
+            </Host>
+
+            <Applications>
+                <Application>
+                    <Name>app</Name>
+                    <Type>live</Type>
+
+                    <OutputProfiles>
+                        <OutputProfile>
+                            <Name>bypass_stream</Name>
+                            <OutputStreamName>${OriginStreamName}</OutputStreamName>
+                            <Playlist>
+                                <Name>default</Name>
+                                <FileName>master</FileName>
+                                <Options>
+                                    <EnableTsPackaging>true</EnableTsPackaging>
+                                </Options>
+                            </Playlist>
+                            <Encodes>
+                                <Video>
+                                    <Name>bypass_video</Name>
+                                    <Bypass>true</Bypass>
+                                </Video>
+                                <Audio>
+                                    <Name>bypass_audio</Name>
+                                    <Bypass>true</Bypass>
+                                </Audio>
+                            </Encodes>
+                        </OutputProfile>
+                    </OutputProfiles>
+
+                    <Providers>
+                        <RTMP />
+                        <SRT />
+                        <WebRTC />
+                    </Providers>
+
+                    <Publishers>
+                        <WebRTC>
+                            <CreateDefaultPlaylist>true</CreateDefaultPlaylist>
+                        </WebRTC>
+                        <LLHLS>
+                            <ChunkDuration>0.5</ChunkDuration>
+                            <SegmentDuration>6</SegmentDuration>
+                            <SegmentCount>10</SegmentCount>
+                            <CreateDefaultPlaylist>true</CreateDefaultPlaylist>
+                        </LLHLS>
+                        <HLS>
+                            <SegmentDuration>4</SegmentDuration>
+                            <SegmentCount>4</SegmentCount>
+                            <CreateDefaultPlaylist>true</CreateDefaultPlaylist>
+                        </HLS>
+                    </Publishers>
+                </Application>
+            </Applications>
+        </VirtualHost>
+    </VirtualHosts>
+</Server>
