@@ -1,0 +1,2 @@
+# Python dependencies for the WiFi Silent Disco tooling.
+# This file is intentionally minimal because the GUI and setup scripts rely only on the standard library.

@@ -3,65 +3,216 @@
 from __future__ import annotations
 
 import argparse
+import os
+import shlex
 import shutil
 import socket
 import subprocess
+import sys
+import venv
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ENV_PATH = REPO_ROOT / ".env"
 ENV_TEMPLATE_PATH = REPO_ROOT / ".env.example"
+REQUIREMENTS_FILE = REPO_ROOT / "requirements.txt"
+VENV_DIR = REPO_ROOT / ".venv"
+
+EXPECTED_MAJOR = 3
+SUPPORTED_MINOR_VERSIONS = {10, 11, 12}
 
 REQUIRED_COMMANDS = {
     "docker": "Docker is required to run OvenMediaEngine. Install Docker Desktop (Windows/macOS) or Docker Engine (Linux) and rerun this script.",
     "docker compose": "Docker Compose V2 is required. On Linux ensure you installed the docker-compose-plugin package. On macOS/Windows it ships with Docker Desktop.",
 }
 
+PYTHON_MODULE_REQUIREMENTS = {
+    "tkinter": (
+        "Tkinter is required for the GUI controller. On Windows rerun the official Python installer and enable the "
+        '"tcl/tk and IDLE" optional feature. On Debian/Ubuntu install the python3-tk package.'
+    ),
+}
+
+
+@dataclass
+class SetupReport:
+    """Collects actions, warnings, and errors to present at the end of the run."""
+
+    actions: List[str] = field(default_factory=list)
+    warnings: List[str] = field(default_factory=list)
+    errors: List[str] = field(default_factory=list)
+
+    def add_action(self, message: str) -> None:
+        self.actions.append(message)
+
+    def add_warning(self, message: str) -> None:
+        self.warnings.append(message)
+
+    def add_error(self, message: str) -> None:
+        self.errors.append(message)
+
+    def print_summary(self) -> None:
+        print("\n===== Setup Summary =====")
+        if self.actions:
+            print("\nCompleted actions:")
+            for line in self.actions:
+                print(f"  • {line}")
+        if self.warnings:
+            print("\nWarnings:")
+            for line in self.warnings:
+                print(f"  • {line}")
+        if self.errors:
+            print("\nErrors:")
+            for line in self.errors:
+                print(f"  • {line}")
+        if not any([self.actions, self.warnings, self.errors]):
+            print("No changes were necessary.")
+
 
 def run(cmd: list[str], **kwargs) -> subprocess.CompletedProcess:
     """Run a command and return the completed process."""
-    print(f"$ {' '.join(cmd)}")
+    print(f"$ {' '.join(shlex.quote(part) for part in cmd)}")
     return subprocess.run(cmd, check=True, text=True, **kwargs)
 
 
-def docker_daemon_ready() -> bool:
+def docker_daemon_ready(report: SetupReport) -> bool:
     try:
         run(["docker", "info"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     except FileNotFoundError:
+        report.add_error(
+            "Docker command not found. Install Docker Desktop (Windows/macOS) or Docker Engine (Linux) and rerun the setup."
+        )
         return False
     except subprocess.CalledProcessError as exc:
-        print("[!] Docker is installed but not running. Start Docker Desktop / Engine and ensure WSL integration is enabled if you are on Windows.")
+        report.add_error(
+            "Docker is installed but not running. Start Docker Desktop / Engine and ensure WSL integration is enabled on Windows."
+        )
         if exc.stdout:
             print(exc.stdout)
         return False
     return True
 
 
-def command_available(command: str) -> bool:
-    parts = command.split()
-    if len(parts) == 1:
-        return shutil.which(command) is not None
-    primary = shutil.which(parts[0])
-    if not primary:
+def command_available(command: str, message: str, report: SetupReport) -> bool:
+    parts = shlex.split(command)
+    executable = shutil.which(parts[0])
+    if not executable:
+        report.add_error(message)
         return False
     try:
-        run(parts + ["--version"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    except Exception:
+        subprocess.run(parts + ["--version"], check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    except subprocess.CalledProcessError as exc:
+        report.add_error(
+            f"{parts[0]} is installed but failed when checking the version. Output was:\n{exc.stdout or exc.stderr or 'No output provided.'}"
+        )
         return False
     return True
 
 
-def ensure_requirements() -> None:
-    missing = []
+def ensure_requirements(report: SetupReport) -> bool:
+    all_present = True
     for command, message in REQUIRED_COMMANDS.items():
-        if not command_available(command):
-            print(f"[!] {command} missing. {message}")
-            missing.append(command)
-    if missing:
-        raise SystemExit("Install the missing dependencies listed above and re-run the setup.")
-    if not docker_daemon_ready():
-        raise SystemExit("Start Docker and re-run the setup once the daemon is ready.")
+        if not command_available(command, message, report):
+            all_present = False
+    if not all_present:
+        return False
+    return docker_daemon_ready(report)
+
+
+def check_python_version(report: SetupReport) -> bool:
+    major, minor, micro = sys.version_info[:3]
+    if major != EXPECTED_MAJOR or minor not in SUPPORTED_MINOR_VERSIONS:
+        expected_versions = ", ".join(f"{EXPECTED_MAJOR}.{m}" for m in sorted(SUPPORTED_MINOR_VERSIONS))
+        report.add_error(
+            "Unsupported Python version detected. "
+            f"Found {major}.{minor}.{micro}. Install Python {expected_versions} and rerun the setup."
+        )
+        return False
+    report.add_action(f"Python version {major}.{minor}.{micro} is supported.")
+    return True
+
+
+def check_python_modules(report: SetupReport) -> None:
+    for module, guidance in PYTHON_MODULE_REQUIREMENTS.items():
+        try:
+            __import__(module)
+            report.add_action(f"Verified availability of Python module '{module}'.")
+        except ImportError:
+            report.add_error(f"Missing Python module '{module}'. {guidance}")
+
+
+def _read_pyvenv_cfg(path: Path) -> Dict[str, str]:
+    data: Dict[str, str] = {}
+    cfg_path = path / "pyvenv.cfg"
+    if not cfg_path.exists():
+        return data
+    for line in cfg_path.read_text(encoding="utf-8").splitlines():
+        if "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        data[key.strip().lower()] = value.strip()
+    return data
+
+
+def _venv_python() -> Path:
+    if os.name == "nt":
+        return VENV_DIR / "Scripts" / "python.exe"
+    return VENV_DIR / "bin" / "python"
+
+
+def ensure_virtualenv(report: SetupReport) -> Path | None:
+    recreate = False
+    if VENV_DIR.exists():
+        cfg = _read_pyvenv_cfg(VENV_DIR)
+        version = cfg.get("version")
+        if version and not version.startswith(f"{EXPECTED_MAJOR}.{sys.version_info.minor}"):
+            report.add_warning(
+                "Existing virtual environment was created with a different Python version and will be recreated."
+            )
+            recreate = True
+    if recreate and VENV_DIR.exists():
+        shutil.rmtree(VENV_DIR)
+    if not VENV_DIR.exists():
+        builder = venv.EnvBuilder(with_pip=True, clear=False)
+        try:
+            builder.create(VENV_DIR)
+            report.add_action(f"Created Python virtual environment at {VENV_DIR}.")
+        except Exception as exc:  # pragma: no cover - depends on host system
+            report.add_error(f"Failed to create virtual environment: {exc}")
+            return None
+    else:
+        report.add_action("Python virtual environment already exists.")
+    python_exec = _venv_python()
+    if not python_exec.exists():
+        report.add_error("Virtual environment python executable is missing. Try deleting the .venv folder and rerun the setup.")
+        return None
+    return python_exec
+
+
+def install_python_dependencies(python_exec: Path | None, report: SetupReport) -> None:
+    if python_exec is None:
+        return
+    try:
+        run([str(python_exec), "-m", "pip", "install", "--upgrade", "pip"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        report.add_action("Upgraded pip inside the virtual environment.")
+    except subprocess.CalledProcessError as exc:
+        report.add_warning(
+            "Unable to upgrade pip in the virtual environment. You can upgrade manually with 'python -m pip install --upgrade pip'."
+        )
+        print(exc.stdout or exc.stderr or "No pip output provided.")
+    if not REQUIREMENTS_FILE.exists():
+        report.add_warning("requirements.txt not found. Skipping Python package installation.")
+        return
+    try:
+        run([str(python_exec), "-m", "pip", "install", "-r", str(REQUIREMENTS_FILE)])
+        report.add_action("Installed Python dependencies from requirements.txt.")
+    except subprocess.CalledProcessError as exc:
+        report.add_error(
+            "Failed to install Python dependencies. Review the pip output above and resolve the issues before rerunning the setup."
+        )
+        print(exc.stdout or exc.stderr or "No pip output provided.")
 
 
 def detect_host_ip() -> str:
@@ -99,7 +250,7 @@ def write_env_file(values: Dict[str, str]) -> None:
     print(f"[✓] Wrote {ENV_PATH}")
 
 
-def ensure_env_file(force: bool = False) -> Dict[str, str]:
+def ensure_env_file(report: SetupReport, force: bool = False) -> Dict[str, str]:
     template = load_env_template()
     if ENV_PATH.exists() and not force:
         print("[i] Existing .env detected. Keeping current values.")
@@ -120,6 +271,7 @@ def ensure_env_file(force: bool = False) -> Dict[str, str]:
                 refreshed = True
         if refreshed:
             write_env_file(current)
+            report.add_action("Refreshed .env with updated values.")
         return current
 
     ip = detect_host_ip()
@@ -127,17 +279,18 @@ def ensure_env_file(force: bool = False) -> Dict[str, str]:
     if template.get("OME_HOST_IP", "").lower() in {"auto", ""}:
         template["OME_HOST_IP"] = ip
     write_env_file(template)
+    report.add_action("Created .env from template.")
     return template
 
 
-def pull_images() -> None:
-    if not docker_daemon_ready():
-        print("[!] Skipping image pull because Docker is not running. Start Docker and run the setup again or pull the image manually later.")
-        return
+def pull_images(report: SetupReport) -> None:
     try:
         run(["docker", "pull", "airensoft/ovenmediaengine:latest"])
+        report.add_action("Ensured the OvenMediaEngine Docker image is up to date.")
     except subprocess.CalledProcessError as exc:
-        print("[!] Failed to pull OvenMediaEngine image. You can pull it manually later.")
+        report.add_warning(
+            "Failed to pull OvenMediaEngine image automatically. You can retry later with 'docker pull airensoft/ovenmediaengine:latest'."
+        )
         print(exc)
 
 
@@ -150,17 +303,58 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    ensure_requirements()
-    env_values = ensure_env_file(force=args.force_env)
-    print("[✓] Environment values:")
-    for key, value in env_values.items():
-        print(f"    {key}={value}")
+    report = SetupReport()
+
+    python_ok = check_python_version(report)
+    check_python_modules(report)
+
+    venv_python = None
+    if python_ok:
+        venv_python = ensure_virtualenv(report)
+        install_python_dependencies(venv_python, report)
+    else:
+        report.add_warning(
+            "Skipped virtual environment provisioning because the current Python version is not supported."
+        )
+
+    docker_ready = ensure_requirements(report)
+
+    env_values: Dict[str, str] = {}
+    try:
+        env_values = ensure_env_file(report, force=args.force_env)
+    except FileNotFoundError as exc:
+        report.add_error(str(exc))
+
+    if env_values:
+        print("[✓] Environment values:")
+        for key, value in env_values.items():
+            print(f"    {key}={value}")
+
     compose_file = REPO_ROOT / "docker-compose.yml"
     if not compose_file.exists():
-        raise SystemExit("docker-compose.yml is missing. Verify the repository clone.")
+        report.add_error("docker-compose.yml is missing. Verify the repository clone.")
+
     if not args.skip_pull:
-        pull_images()
-    print("[✓] Setup complete. Run scripts/start_stream_server.py to start the stack.")
+        if docker_ready:
+            pull_images(report)
+        else:
+            report.add_warning(
+                "Skipped pulling Docker images because Docker requirements were not satisfied."
+            )
+
+    report.print_summary()
+    if report.errors:
+        print("\nResolve the errors listed above and rerun the setup once addressed.")
+    else:
+        print("\nSetup complete. Run scripts/start_stream_server.py to start the stack.")
+
+    try:
+        input("\nPress Enter to close this window...")
+    except EOFError:
+        pass
+
+    if report.errors:
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
