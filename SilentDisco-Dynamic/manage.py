@@ -4,8 +4,10 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import shutil
+import socket
 import subprocess
 import sys
 from pathlib import Path
@@ -121,14 +123,11 @@ def write_env_file(config: Dict[str, object], paths: Dict[str, Path]) -> None:
 
 
 def write_player_config(config: Dict[str, object], paths: Dict[str, Path]) -> None:
-    playback_url = (
-        f"http://{config['public_host']}:{config['http_port']}/hls/{config['application_name']}/{config['stream_key']}.m3u8"
-    )
-    rtmp_url = f"rtmp://{config['public_host']}:{config['rtmp_port']}/{config['application_name']}"
+    endpoints = build_stream_endpoints(config)
     payload = {
-        "rtmpUrl": rtmp_url,
+        "rtmpUrl": endpoints["rtmp"],
         "streamKey": config["stream_key"],
-        "playbackUrl": playback_url,
+        "playbackUrl": endpoints["playback"],
     }
     player_config_path = paths["web_root"] / "config.js"
     player_config_path.write_text(
@@ -157,6 +156,97 @@ def run_compose(subcommand: List[str]) -> subprocess.CompletedProcess:
         raise ConfigurationError(
             f"Docker Compose command failed with exit code {exc.returncode}."
         ) from exc
+
+
+def build_stream_endpoints(config: Dict[str, object]) -> Dict[str, str]:
+    playback_url = (
+        f"http://{config['public_host']}:{config['http_port']}/hls/{config['application_name']}/{config['stream_key']}.m3u8"
+    )
+    rtmp_url = f"rtmp://{config['public_host']}:{config['rtmp_port']}/{config['application_name']}"
+    player_page = f"http://{config['public_host']}:{config['http_port']}/"
+    return {"playback": playback_url, "rtmp": rtmp_url, "player": player_page}
+
+
+def prompt_with_default(message: str, default: str) -> str:
+    """Prompt the user for a value with a default fallback."""
+
+    try:
+        response = input(f"{message} [{default}]: ").strip()
+    except EOFError:
+        return default
+    return response or default
+
+
+def detect_host_ip() -> str:
+    """Attempt to determine the primary IP address of this machine."""
+
+    with contextlib.ExitStack() as stack:
+        sock = stack.enter_context(socket.socket(socket.AF_INET, socket.SOCK_DGRAM))
+        try:
+            sock.connect(("8.8.8.8", 80))
+            return sock.getsockname()[0]
+        except OSError:
+            hostname_ip = ""
+            with contextlib.suppress(OSError):
+                hostname_ip = socket.gethostbyname(socket.gethostname())
+            return hostname_ip or "127.0.0.1"
+
+
+def port_available(port: int, host: str = "0.0.0.0") -> bool:
+    with contextlib.closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            sock.bind((host, port))
+        except OSError:
+            return False
+    return True
+
+
+def find_available_port(preferred: int, *, exclude: Optional[Iterable[int]] = None) -> int:
+    exclude_set = {preferred}
+    if exclude:
+        exclude_set.update(int(value) for value in exclude)
+
+    if port_available(preferred):
+        return preferred
+
+    for candidate in range(1024, 65535):
+        if candidate in exclude_set:
+            continue
+        if port_available(candidate):
+            return candidate
+    raise ConfigurationError("Unable to find an available network port.")
+
+
+def prepare_runtime_configuration(
+    config: Dict[str, object], *, interactive: bool
+) -> Dict[str, object]:
+    """Ensure the runtime configuration is interactive and collision-free."""
+
+    updated = dict(config)
+    if interactive and sys.stdin.isatty():
+        print("\nSilent Disco setup")
+        updated["application_name"] = prompt_with_default(
+            "Stream name (used in the RTMP path)", str(config["application_name"])
+        )
+        updated["stream_key"] = prompt_with_default(
+            "Stream key", str(config["stream_key"])
+        )
+    else:
+        print(
+            "Using configured stream name and key (non-interactive mode)."
+        )
+
+    ip_address = detect_host_ip()
+    updated["public_host"] = ip_address
+
+    updated["rtmp_port"] = find_available_port(int(updated["rtmp_port"]))
+    updated["http_port"] = find_available_port(
+        int(updated["http_port"]), exclude={updated["rtmp_port"]}
+    )
+
+    save_user_configuration(updated)
+    return updated
 
 
 def load_configuration() -> Dict[str, object]:
@@ -195,6 +285,7 @@ def command_render(args: argparse.Namespace) -> None:
     config = load_configuration()
     overrides = parse_overrides(args.set or [])
     config = apply_overrides(config, overrides)
+    config = prepare_runtime_configuration(config, interactive=False)
     paths = ensure_directories(config)
     render_nginx_config(config)
     write_env_file(config, paths)
@@ -206,13 +297,21 @@ def command_start(args: argparse.Namespace) -> None:
     config = load_configuration()
     overrides = parse_overrides(args.set or [])
     config = apply_overrides(config, overrides)
+    config = prepare_runtime_configuration(config, interactive=True)
     paths = ensure_directories(config)
     render_nginx_config(config)
     write_env_file(config, paths)
     write_player_config(config, paths)
     print("Starting Silent Disco stack via Docker Compose…")
     run_compose(["up", "-d", "--remove-orphans"])
+    endpoints = build_stream_endpoints(config)
     print("Silent Disco stack is running.")
+    print()
+    print("Streaming details:")
+    print(f"  Stream URL: {endpoints['rtmp']}")
+    print(f"  Stream Key: {config['stream_key']}")
+    print(f"  Guest player page: {endpoints['player']}")
+    print(f"  HLS playlist: {endpoints['playback']}")
 
 
 def command_stop(args: argparse.Namespace) -> None:

@@ -24,15 +24,13 @@ cd SilentDisco-Dynamic
 python manage.py start
 ```
 
-The first run will:
+The start command now walks you through an interactive setup:
 
-1. Merge your user settings with the defaults.
-2. Render the nginx configuration and player metadata.
-3. Write a `.env` file for Docker Compose and start the media container.
+1. You'll be prompted for the stream name (RTMP application) and stream key.
+2. The helper automatically detects a suitable LAN IP address and picks free RTMP/HLS ports.
+3. nginx configuration, Docker environment variables, and the web player metadata are rendered before the stack launches.
 
-Once the stack is running you can stream from OBS to
-`rtmp://<your-host>:1935/live` using the configured stream key (default: `party`).
-The audience can open the player at `http://<your-host>:8080`.
+When Docker reports that the services are up, the CLI prints the ingest URL, the stream key, the audience player URL, and the direct HLS playlist so you always know where to point OBS and your guests.
 
 ## Changing settings
 
@@ -53,8 +51,8 @@ Available keys are:
 | `application_name`   | RTMP application name (also part of playback URL)   | `live` |
 | `stream_key`         | Default stream name used by OBS and player          | `party` |
 | `public_host`        | Hostname or IP embedded in the URLs                 | `localhost` |
-| `rtmp_port`          | Host port for RTMP ingestion                        | `1935` |
-| `http_port`          | Host port for the player/HLS output                 | `8080` |
+| `rtmp_port`          | Host port for RTMP ingestion (auto-detected if busy) | `1935` |
+| `http_port`          | Host port for the player/HLS output (auto-detected)  | `8080` |
 | `hls_fragment`       | Segment length in seconds                           | `2.0` |
 | `hls_playlist_length`| Playlist window in seconds                          | `10` |
 | `hls_output_dir`     | Directory for generated HLS segments                | `data/hls` |
