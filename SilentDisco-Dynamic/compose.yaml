@@ -9,7 +9,7 @@ services:
       - "${RTMP_PORT}:1935"
       - "${HTTP_PORT}:8080"
     volumes:
-      - ${NGINX_CONFIG}:/etc/nginx/nginx.conf:ro
+      - ${NGINX_CONFIG}:/etc/nginx/nginx.conf.template:ro
       - ${WEB_ROOT}:/var/www/html:ro
       - ${HLS_OUTPUT_DIR}:/var/www/hls
     healthcheck:

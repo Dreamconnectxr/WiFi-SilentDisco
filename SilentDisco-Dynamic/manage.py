@@ -97,6 +97,15 @@ def ensure_directories(config: Dict[str, object]) -> Dict[str, Path]:
     return {"hls_path": hls_path, "web_root": web_root}
 
 
+def project_relative(path: Path) -> str:
+    """Represent ``path`` relative to the project root when possible."""
+
+    try:
+        return str(path.relative_to(PROJECT_ROOT))
+    except ValueError:
+        return str(path)
+
+
 def render_nginx_config(config: Dict[str, object]) -> None:
     template = Template(NGINX_TEMPLATE_PATH.read_text(encoding="utf-8"))
     rendered = template.safe_substitute({
@@ -114,9 +123,9 @@ def write_env_file(config: Dict[str, object], paths: Dict[str, Path]) -> None:
         "CONTAINER_NAME": str(config["container_name"]),
         "RTMP_PORT": str(config["rtmp_port"]),
         "HTTP_PORT": str(config["http_port"]),
-        "NGINX_CONFIG": str(NGINX_CONFIG_PATH.resolve()),
-        "HLS_OUTPUT_DIR": str(paths["hls_path"].resolve()),
-        "WEB_ROOT": str(paths["web_root"].resolve()),
+        "NGINX_CONFIG": project_relative(NGINX_CONFIG_PATH),
+        "HLS_OUTPUT_DIR": project_relative(paths["hls_path"]),
+        "WEB_ROOT": project_relative(paths["web_root"]),
     }
     lines = [f"{key}={value}" for key, value in env_values.items()]
     ENV_FILE.write_text("\n".join(lines) + "\n", encoding="utf-8")
