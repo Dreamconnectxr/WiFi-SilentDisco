@@ -1,0 +1,82 @@
+:root {
+  color-scheme: dark light;
+  font-family: "Inter", "Segoe UI", Roboto, sans-serif;
+  line-height: 1.5;
+  --accent: #5b8def;
+  --bg: #0f172a;
+  --bg-alt: #1e293b;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  padding: 2rem 1rem 3rem;
+}
+
+.page {
+  width: min(960px, 100%);
+}
+
+.page__header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.subtitle {
+  color: var(--muted);
+  margin: 0.5rem 0 0;
+}
+
+.status {
+  background: var(--bg-alt);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.45);
+}
+
+.status__item {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.status__label {
+  font-weight: 600;
+  color: var(--muted);
+  min-width: 100px;
+}
+
+code {
+  background: rgba(148, 163, 184, 0.15);
+  border-radius: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.95rem;
+}
+
+.player {
+  background: var(--bg-alt);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.45);
+}
+
+video {
+  width: 100%;
+  border-radius: 0.75rem;
+  background: black;
+}
+
+.player__hint {
+  margin-top: 0.75rem;
+  color: var(--muted);
+}

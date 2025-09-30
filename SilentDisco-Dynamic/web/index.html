@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Silent Disco Stream</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.7"></script>
+    <script defer src="config.js"></script>
+  </head>
+  <body>
+    <main class="page">
+      <header class="page__header">
+        <h1>Silent Disco Stream</h1>
+        <p class="subtitle">
+          Watch the live set directly in your browser or connect via your favourite media player.
+        </p>
+      </header>
+      <section class="status" id="status-panel">
+        <div class="status__item">
+          <span class="status__label">RTMP URL:</span>
+          <code id="rtmp-url"></code>
+        </div>
+        <div class="status__item">
+          <span class="status__label">Stream Key:</span>
+          <code id="stream-key"></code>
+        </div>
+        <div class="status__item">
+          <span class="status__label">HLS URL:</span>
+          <code id="hls-url"></code>
+        </div>
+      </section>
+      <section class="player">
+        <video id="player" controls playsinline></video>
+        <p class="player__hint" id="player-hint"></p>
+      </section>
+    </main>
+    <script>
+      (function initialisePlayer() {
+        const config = window.SILENT_DISCO_CONFIG || {};
+        const video = document.getElementById('player');
+        const hint = document.getElementById('player-hint');
+
+        const rtmpUrl = config.rtmpUrl || 'Unavailable';
+        const streamKey = config.streamKey || 'Unavailable';
+        const playbackUrl = config.playbackUrl;
+
+        document.getElementById('rtmp-url').textContent = rtmpUrl;
+        document.getElementById('stream-key').textContent = streamKey;
+        document.getElementById('hls-url').textContent = playbackUrl || 'Waiting for configuration';
+
+        if (!playbackUrl) {
+          hint.textContent = 'Start the media server to generate a playback URL.';
+          return;
+        }
+
+        if (Hls.isSupported()) {
+          const hls = new Hls({
+            enableWorker: true,
+            lowLatencyMode: true,
+          });
+          hls.loadSource(playbackUrl);
+          hls.attachMedia(video);
+          hls.on(Hls.Events.ERROR, function (event, data) {
+            if (data.fatal) {
+              hint.textContent = 'Stream temporarily unavailable. Waiting for data…';
+            }
+          });
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+          video.src = playbackUrl;
+        } else {
+          hint.textContent = 'Your browser does not support HLS playback. Try a modern browser or use a media player.';
+        }
+      })();
+    </script>
+  </body>
+</html>
