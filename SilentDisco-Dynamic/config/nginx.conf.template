@@ -1,0 +1,68 @@
+worker_processes auto;
+error_log /var/log/nginx/error.log info;
+
+pid /var/run/nginx.pid;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+
+    sendfile        on;
+    keepalive_timeout  65;
+
+    server {
+        listen ${http_port};
+        server_name _;
+
+        add_header 'Access-Control-Allow-Origin' '*' always;
+        add_header 'Access-Control-Expose-Headers' 'Content-Length' always;
+
+        location / {
+            root /var/www/html;
+            index index.html;
+            try_files $uri $uri/ /index.html;
+        }
+
+        location /hls/ {
+            types {
+                application/vnd.apple.mpegurl m3u8;
+                video/mp2t ts;
+            }
+            add_header 'Access-Control-Allow-Origin' '*' always;
+            add_header 'Cache-Control' 'no-cache';
+            expires -1;
+            alias /var/www/hls/;
+        }
+
+        location = /healthz {
+            access_log off;
+            return 200 'ok';
+        }
+    }
+}
+
+rtmp {
+    server {
+        listen ${rtmp_port};
+        chunk_size 4096;
+
+        application ${application_name} {
+            live on;
+            record off;
+            interleave on;
+
+            hls on;
+            hls_nested on;
+            hls_path /var/www/hls/${application_name};
+            hls_fragment ${hls_fragment};
+            hls_playlist_length ${hls_playlist_length};
+
+            allow publish all;
+            allow play all;
+        }
+    }
+}

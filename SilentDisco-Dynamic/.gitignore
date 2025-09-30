@@ -1,0 +1,6 @@
+.env
+config/generated/
+config/user_config.json
+web/config.js
+data/hls/
+__pycache__/

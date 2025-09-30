@@ -1,0 +1,12 @@
+{
+  "container_name": "silentdisco_media",
+  "application_name": "live",
+  "stream_key": "party",
+  "public_host": "localhost",
+  "rtmp_port": 1935,
+  "http_port": 8080,
+  "hls_fragment": 2.0,
+  "hls_playlist_length": 10,
+  "hls_output_dir": "data/hls",
+  "web_root": "web"
+}

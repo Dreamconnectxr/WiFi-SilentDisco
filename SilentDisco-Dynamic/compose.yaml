@@ -1,0 +1,20 @@
+version: "3.8"
+
+services:
+  media:
+    image: alfg/nginx-rtmp
+    container_name: ${CONTAINER_NAME}
+    restart: unless-stopped
+    ports:
+      - "${RTMP_PORT}:1935"
+      - "${HTTP_PORT}:8080"
+    volumes:
+      - ${NGINX_CONFIG}:/etc/nginx/nginx.conf:ro
+      - ${WEB_ROOT}:/var/www/html:ro
+      - ${HLS_OUTPUT_DIR}:/var/www/hls
+    healthcheck:
+      test: ["CMD-SHELL", "nginx -t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
