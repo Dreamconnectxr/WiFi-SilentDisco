@@ -2,45 +2,14 @@
 """Interactive controller for the WiFi Silent Disco streaming stack."""
 from __future__ import annotations
 
-import os
-import sys
 from pathlib import Path
 
-EXPECTED_MAJOR = 3
-EXPECTED_MINOR = 12
+from python_runtime import ensure_required_python
+
+
+ensure_required_python()
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-VENV_DIR = REPO_ROOT / ".venv"
-
-
-def _venv_python_path() -> Path:
-    if os.name == "nt":
-        return VENV_DIR / "Scripts" / "python.exe"
-    return VENV_DIR / "bin" / "python"
-
-
-def ensure_python_runtime() -> None:
-    major, minor, micro = sys.version_info[:3]
-    if (major, minor) == (EXPECTED_MAJOR, EXPECTED_MINOR):
-        return
-
-    venv_python = _venv_python_path()
-    current_exec = Path(sys.executable).resolve()
-    if venv_python.exists() and current_exec != venv_python.resolve():
-        print(
-            "Detected Python"
-            f" {major}.{minor}.{micro}. Restarting with project interpreter {venv_python}..."
-        )
-        os.execv(str(venv_python), [str(venv_python), *sys.argv])
-
-    raise SystemExit(
-        "WiFi Silent Disco requires Python "
-        f"{EXPECTED_MAJOR}.{EXPECTED_MINOR}. Detected {major}.{minor}.{micro}. "
-        "Install the required version and rerun the script."
-    )
-
-
-ensure_python_runtime()
 
 import json
 import queue
