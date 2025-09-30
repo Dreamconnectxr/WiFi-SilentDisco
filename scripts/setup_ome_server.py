@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import os
 import shlex
 import shutil
 import socket
@@ -14,14 +13,21 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+from python_runtime import (
+    REPO_ROOT,
+    REQUIRED_PYTHON,
+    VENV_DIR,
+    ensure_required_python,
+    venv_python_path,
+)
+
+ensure_required_python()
+
 ENV_PATH = REPO_ROOT / ".env"
 ENV_TEMPLATE_PATH = REPO_ROOT / ".env.example"
 REQUIREMENTS_FILE = REPO_ROOT / "requirements.txt"
-VENV_DIR = REPO_ROOT / ".venv"
 
-EXPECTED_MAJOR = 3
-EXPECTED_MINOR = 12
+EXPECTED_MAJOR, EXPECTED_MINOR = REQUIRED_PYTHON
 
 REQUIRED_COMMANDS = {
     "docker": "Docker is required to run OvenMediaEngine. Install Docker Desktop (Windows/macOS) or Docker Engine (Linux) and rerun this script.",
@@ -155,12 +161,6 @@ def _read_pyvenv_cfg(path: Path) -> Dict[str, str]:
     return data
 
 
-def _venv_python() -> Path:
-    if os.name == "nt":
-        return VENV_DIR / "Scripts" / "python.exe"
-    return VENV_DIR / "bin" / "python"
-
-
 def ensure_virtualenv(report: SetupReport) -> Path | None:
     recreate = False
     if VENV_DIR.exists():
@@ -183,7 +183,7 @@ def ensure_virtualenv(report: SetupReport) -> Path | None:
             return None
     else:
         report.add_action("Python virtual environment already exists.")
-    python_exec = _venv_python()
+    python_exec = venv_python_path()
     if not python_exec.exists():
         report.add_error("Virtual environment python executable is missing. Try deleting the .venv folder and rerun the setup.")
         return None
