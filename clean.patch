@@ -1,0 +1,2297 @@
+diff --git a/.env.example b/.env.example
+new file mode 100644
+index 0000000000000000000000000000000000000000..ea4119864bab8600489165b7adc933d1baa5d407
+--- /dev/null
++++ b/.env.example
+@@ -0,0 +1,18 @@
++# Silent Disco configuration
++HOST_DOMAIN=silent-disco.local
++HOST_IP=192.168.1.100
++HTTPS_PORT=3443
++HTTP_PORT=3080
++LIVEKIT_API_KEY=localkey
++LIVEKIT_API_SECRET=localsecret
++LIVEKIT_WEBRTC_PORT=7880
++LIVEKIT_ROOM=disco
++WHIP_URL=https://silent-disco.local:3443/whip/ingest
++WHIP_STREAM_KEY=host
++GUEST_WEB_PORT=4173
++HOST_GUI_PORT=4600
++CERT_DIR=certs
++LOG_DIR=logs
++SYNC_WS=ws://silent-disco.local:3443/ws/sync
++BEATBUS_WS=ws://silent-disco.local:3443/ws/beat
++TOKEN_ENDPOINT=https://silent-disco.local:3443/api/token
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000000000000000000000000000000000000..d378fbe330bd8e0869be4557e92e4a489fbf06d3
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,38 @@
++node_modules/
++
++# Build outputs (monorepo-wide)
++dist/
++logs/
++log/
++*.log
++
++# Certificates generated locally
++certs/
++
++# Server binaries downloaded or built locally
++server/bin/
++
++# Environment configuration
++.env
++.env.local
++
++# Host GUI Electron build artifacts
++host-gui/dist/
++host-gui/out/
++host-gui/build/
++host-gui/win-unpacked/
++host-gui/*.exe
++host-gui/*.msi
++host-gui/*.zip
++host-gui/*.blockmap
++host-gui/latest.yml
++host-gui/builder-debug.yml
++
++# Guest web app build artifacts
++guest-web/dist/
++
++# Miscellaneous OS/editor files
++.DS_Store
++Thumbs.db
++.idea/
++.vscode/
+diff --git a/LICENSE b/LICENSE
+new file mode 100644
+index 0000000000000000000000000000000000000000..7afdae70cd1ff2f895af28b81858ed7dacd8dd25
+--- /dev/null
++++ b/LICENSE
+@@ -0,0 +1,21 @@
++MIT License
++
++Copyright (c) 2024 Silent Disco
++
++Permission is hereby granted, free of charge, to any person obtaining a copy
++of this software and associated documentation files (the "Software"), to deal
++in the Software without restriction, including without limitation the rights
++to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++copies of the Software, and to permit persons to whom the Software is
++furnished to do so, subject to the following conditions:
++
++The above copyright notice and this permission notice shall be included in all
++copies or substantial portions of the Software.
++
++THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
++SOFTWARE.
+diff --git a/README.md b/README.md
+index 25242ba017c7c4aa3493d1264ea6772dbb986ad0..e210ac698e5527398fade737655dc46ab94e0c10 100644
+--- a/README.md
++++ b/README.md
+@@ -1,22 +1,64 @@
+-# WiFi-SilentDisco
++# Silent Disco (Local LAN)
+ 
+-Silent Disco Solution Via Wifi - Local network. Enabling everyone to start a headphone party Silent Disco. may it be at home or Outside.
+-we use OvenMediaEngine to make the server.
+-We have scripts, that even somebody without scripting knowledge can execute, the scripts will give feedback and instructions how to be used.
+-We will have a Guest website with the stream Player 
+-after it has been setup with the setup script, The Stream server can be started with a start script. this one launches a Gui where all important parameters are made visible. The server starts automatically, The gui Has Buttons to start and stop the server. It also gives Live Feedback if the server is running, and if media is being streamed. Also the amount of Guest clients is displayed.
+-Also in the GUI there are the instructions on how to setup OBS so it looks for what Streaming URL the user has to set obs and also the Key.
++Silent Disco is a Windows-first, all-in-one toolkit for hosting a synchronized, low-latency audio party over a local Wi-Fi or Ethernet network. The solution bundles installation scripts, a LiveKit-based streaming core, a Windows host control center, and a progressive guest web application.
+ 
++## Quick Start
+ 
++1. **Clone the repo** or download a release archive.
++2. Copy `.env.example` to `.env` and adjust host IP/domain values as needed.
++3. On Windows 10/11 run PowerShell as Administrator and execute:
++   ```powershell
++   Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
++   ./scripts/setup.ps1
++   ```
++4. After setup completes, start the stack:
++   ```powershell
++   ./scripts/start_server.ps1
++   ```
++5. Follow on-screen prompts in the Host Control app to configure OBS, share the guest URL/QR code, and monitor synchronization.
+ 
++## Repository Layout
+ 
++```
++silent-disco/
++  README.md
++  LICENSE
++  .env.example
++  scripts/
++    setup.ps1
++    start_server.ps1
++    stop_server.ps1
++    doctor.ps1
++  server/
++    docker-compose.yml
++    livekit.yaml
++    bin/
++  host-gui/
++    package.json
++    electron-builder.yml
++    src/
++  guest-web/
++    package.json
++    vite.config.ts
++    src/
++  certs/
++  docs/
++    Architecture.md
++    OBS-Setup.md
++    Troubleshooting.md
++```
+ 
++## Technology Stack
+ 
++- **LiveKit** SFU with WHIP ingest for sub-second latency.
++- **Electron** Host Control application for Windows.
++- **React + Vite** guest web PWA.
++- **mkcert** managed local TLS certificates for secure WebRTC.
+ 
++## Contributing
+ 
+-Objective:
++Pull requests are welcome! Please open an issue to discuss major changes before submitting.
+ 
+-Build a Setup script, that installs all necessary dependencies and libaries.
+-make the Server Start script with the Gui. Make sure everything is functional and when launched it really creates a server in the network, that OBS can stream to.
+-Make sure, that every necessary paths and ports are automatically set. Also dont have them hardcoded if not needed. instead, give the user a Gui option to analize for possible errors because of blcoked ports firewall or similar and then automatically change to new parameters. the stream URL and Key wil be automatically updated in this case.
+-Every Gui function gives user feedback.
++## License
++
++[MIT](LICENSE)
+diff --git a/docs/Architecture.md b/docs/Architecture.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..a8d410e4f588228986c1d5eaaffd884873f567b6
+--- /dev/null
++++ b/docs/Architecture.md
+@@ -0,0 +1,59 @@
++# Silent Disco Architecture
++
++## Overview
++
++The Silent Disco system is composed of four major subsystems working together on a Windows-first local network deployment:
++
++1. **Setup & Orchestration Scripts** (`scripts/`)
++   - `setup.ps1` provisions dependencies (Winget, Git, Node.js, Docker Desktop, mkcert) and prepares the environment.
++   - `start_server.ps1` launches LiveKit via Docker (or a bundled binary fallback) and opens the Host Control GUI.
++   - `stop_server.ps1` and `doctor.ps1` manage lifecycle and health diagnostics.
++
++2. **LiveKit SFU Core** (`server/`)
++   - `docker-compose.yml` runs the LiveKit SFU with WHIP ingest and LAN-oriented ports.
++   - `livekit.yaml` reads from `.env` and the local TLS certs generated by mkcert.
++   - `bin/` holds the downloaded Windows binary fallback for no-Docker environments.
++
++3. **Host Control Application** (`host-gui/`)
++   - Electron-based UI offering status dashboards, OBS configuration, guest metrics, BPM controls, and log access.
++   - Communicates directly with the filesystem and OS tooling to observe Docker, fallback services, and metrics files.
++
++4. **Guest Progressive Web App** (`guest-web/`)
++   - React/Vite application that connects to LiveKit over WebRTC, uses WebSockets for clock/beat sync, and applies drift correction.
++   - Ships as a PWA for easy installation on mobile devices.
++
++```
++OBS (WHIP) ---> LiveKit SFU ---> Guests (WebRTC)
++                      ^               |
++                      |               v
++                  Host Control <--- Sync Bus
++```
++
++## Networking
++
++- Primary transport is LAN-based WebRTC via LiveKit. UDP and TCP ports are bound to the host IP defined in `.env`.
++- OBS ingests using the WHIP endpoint exposed by LiveKit over HTTPS (mkcert-generated certificate).
++- Clock and beat synchronization use WebSocket endpoints (to be hosted alongside LiveKit or via custom service) following a lightweight JSON protocol.
++
++## Synchronization Strategy
++
++1. **Clock Sync**: Clients initiate ping/pong exchanges to estimate server clock offset and RTT, refining the offset with exponential smoothing.
++2. **Playout Alignment**: The guest player nudges `currentTime` and `playbackRate` (0.995–1.005) to keep drift within ±30 ms once locked.
++3. **Beat Bus**: Optional WebSocket feed publishes BPM and phase metadata; the guest UI surfaces the values and complements the tap-tempo button.
++
++## Metrics & Telemetry
++
++- Guest clients can push drift metrics via LiveKit data channels (placeholder `guest-metrics.json` consumed by the host GUI).
++- Host Control polls logs, network interfaces, and Docker status for quick diagnostics.
++
++## Security
++
++- mkcert provisions a local CA and generates certificates under `certs/` for LAN HTTPS.
++- Secrets (API key/secret) remain in `.env` and are not committed to source control.
++- LAN-only usage avoids the need for public TURN servers; LiveKit is configured with `turn.enabled = false`.
++
++## Extending the System
++
++- Implement REST endpoints (e.g., `/token`, `/metrics`) using LiveKit's API keys via a lightweight Node.js service.
++- Enhance the beat bus by feeding BPM from host tap events or audio analysis.
++- Integrate metrics reporting back into the Host Control UI via WebSocket or shared files.
+diff --git a/docs/OBS-Setup.md b/docs/OBS-Setup.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..2a4c81f6c5e449248e26c2d5eeecb6d9a9286631
+--- /dev/null
++++ b/docs/OBS-Setup.md
+@@ -0,0 +1,22 @@
++# OBS Setup Guide
++
++Follow these steps after running `scripts/start_server.ps1` and launching the Host Control app.
++
++1. **Install OBS 29+** with the [WHIP/WebRTC output plugin](https://github.com/obsproject/obs-websocket). The Host Control "OBS Setup" tab summarizes the required settings.
++2. Open **Settings → Stream**.
++   - Service: **Custom... (WHIP)**
++   - Server: Use the WHIP URL shown in the Host Control app (e.g., `https://silent-disco.local:3443/whip/ingest`).
++   - Stream Key: Provided in Host Control (default `host`).
++3. Open **Settings → Output**.
++   - Output Mode: **Advanced**
++   - Audio Encoder: **Opus** (CBR, 128 kbps, 48 kHz)
++   - Resample audio to 48 kHz and ensure mono/stereo matches your mix.
++4. Under **Settings → Advanced**, enable **Low Latency Mode** if available and keep buffering disabled.
++5. Press **Start Streaming**. The Host Control status card should change to "Connected" and the guest web app will begin playback.
++6. Use the **Tap Tempo** button in Host Control to broadcast the beat to guests if desired.
++
++### Troubleshooting
++
++- Ensure mkcert certificates are trusted on the host machine so OBS recognizes the HTTPS endpoint.
++- If OBS reports authentication errors, regenerate the stream key in `.env` and restart the server scripts.
++- For packet loss, verify Wi-Fi congestion and consider switching to a dedicated access point.
+diff --git a/docs/Troubleshooting.md b/docs/Troubleshooting.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..a1b6906d0428dbc2446ccb9b541a2d164e84def4
+--- /dev/null
++++ b/docs/Troubleshooting.md
+@@ -0,0 +1,30 @@
++# Troubleshooting
++
++## Setup Script Issues
++
++- **Winget not found**: Install the Microsoft Store "App Installer" manually, then rerun `scripts/setup.ps1`.
++- **Docker install fails**: The script marks Docker as optional. Install Docker Desktop manually or rely on the fallback LiveKit binary.
++- **mkcert errors**: Ensure PowerShell is running as Administrator. Delete the `certs/` folder and rerun the setup script to regenerate certificates.
++
++## Runtime Checks (`scripts/doctor.ps1`)
++
++- **Docker daemon fail**: Confirm Docker Desktop is running and WSL2 is enabled.
++- **Port test fail**: Another application may occupy the HTTPS port. Adjust `HTTPS_PORT` in `.env`, rerun setup, and restart services.
++- **Guest web build missing**: Run `npm run build` inside `guest-web/` to generate the production assets before packaging.
++
++## OBS Streaming Problems
++
++- **Cannot connect to WHIP URL**: Verify the certificate is trusted. From a browser on the host, navigate to the WHIP URL and accept the certificate if prompted.
++- **Audio glitches**: Lower the OBS audio bitrate (e.g., 96 kbps) or reduce other Wi-Fi traffic. Ensure laptops are on AC power.
++- **High latency**: Check the Host Control drift metrics. Restart the guest web app to reinitialize sync if offsets grow beyond ±80 ms.
++
++## Guest Web App
++
++- **Stuck on "Buffering"**: Confirm the LiveKit token endpoint is reachable (`/token`). Implement a lightweight Node.js service returning tokens signed with the API secret.
++- **No audio output**: Some mobile browsers require a tap to start playback. Tap the screen or the "Tap to Sync" button.
++- **PWA offline page**: The service worker caches core assets. Refresh with a network connection to update to the latest build.
++
++## Logs
++
++- Host Control shows the latest LiveKit log under the **Logs** tab. For more detail, inspect the log files in `logs/` or run `docker logs livekit-livekit-1` when using Docker.
++- Guest drift metrics are persisted to `logs/guest-metrics.json` (if a telemetry service writes it). Verify file permissions if the metrics do not update.
+diff --git a/guest-web/index.html b/guest-web/index.html
+new file mode 100644
+index 0000000000000000000000000000000000000000..355dec8ea56f3454797f703fd8c6032cd105a0a7
+--- /dev/null
++++ b/guest-web/index.html
+@@ -0,0 +1,14 @@
++<!DOCTYPE html>
++<html lang="en">
++  <head>
++    <meta charset="UTF-8" />
++    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++    <link rel="manifest" href="/manifest.webmanifest" />
++    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
++    <title>Silent Disco</title>
++  </head>
++  <body>
++    <div id="root"></div>
++    <script type="module" src="/src/main.tsx"></script>
++  </body>
++</html>
+diff --git a/guest-web/package.json b/guest-web/package.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..dca3d74c5267a8d57d256339841228fe8b6c2b93
+--- /dev/null
++++ b/guest-web/package.json
+@@ -0,0 +1,24 @@
++{
++  "name": "silent-disco-guest",
++  "version": "0.1.0",
++  "private": true,
++  "scripts": {
++    "dev": "vite",
++    "build": "vite build",
++    "preview": "vite preview"
++  },
++  "dependencies": {
++    "livekit-client": "^2.2.4",
++    "react": "^18.2.0",
++    "react-dom": "^18.2.0"
++  },
++  "devDependencies": {
++    "@vitejs/plugin-react": "^4.2.1",
++    "@types/react": "^18.2.21",
++    "@types/react-dom": "^18.2.7",
++    "autoprefixer": "^10.4.16",
++    "postcss": "^8.4.32",
++    "typescript": "^5.4.5",
++    "vite": "^5.1.0"
++  }
++}
+diff --git a/guest-web/postcss.config.js b/guest-web/postcss.config.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..8c589bbe12ccf96f4b2a3084dd4d0bcd340d60d8
+--- /dev/null
++++ b/guest-web/postcss.config.js
+@@ -0,0 +1,5 @@
++export default {
++  plugins: {
++    autoprefixer: {}
++  }
++};
+diff --git a/guest-web/public/icon-192.png b/guest-web/public/icon-192.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..683006e592b51575d9f2c9936f2f6db1b93044b8
+GIT binary patch
+literal 547
+zcmeAS@N?(olHy`uVBq!ia0vp^2SAvE2}s`E_d9@rf$^26i(^Q|oVS-8IT;if4mfm2
+zocwcaV{>&!K>_2p8#A&GZ~eHZVZCI>5eF4EB}0MEMh_mBBn2Vni4vniLn<VS7^>BF
+V%_-87jR!_PgQu&X%Q~loCIELxm=^#5
+
+literal 0
+HcmV?d00001
+
+diff --git a/guest-web/public/icon-512.png b/guest-web/public/icon-512.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..db4ca841c01b07695adc0402a15dff033f6e7e9b
+GIT binary patch
+literal 1881
+zcmeAS@N?(olHy`uVBq!ia0y~yU;;9k7&t&wwUqN(1_pKoPZ!6KiaBqu8uBt2@Eq76
+zB)RmV{G5X?1ijfN=oi0ZR>-)<%@C2uz!1pBAdosrjRwJJDj3ZOqh-NpaX2Dsgs+Tx
+YO5R&H%WmBUtTGuqUHx3vIVCg!0Km=VcmMzZ
+
+literal 0
+HcmV?d00001
+
+diff --git a/guest-web/public/icon.svg b/guest-web/public/icon.svg
+new file mode 100644
+index 0000000000000000000000000000000000000000..5985a387218d7c88f2345d7835332985e8547a0a
+--- /dev/null
++++ b/guest-web/public/icon.svg
+@@ -0,0 +1,11 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
++  <defs>
++    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
++      <stop offset="0%" stop-color="#2563eb" />
++      <stop offset="100%" stop-color="#7c3aed" />
++    </linearGradient>
++  </defs>
++  <rect width="128" height="128" rx="28" fill="#0f172a" />
++  <circle cx="64" cy="64" r="44" fill="url(#g)" />
++  <text x="50%" y="70%" font-size="52" text-anchor="middle" fill="#fff" font-family="Segoe UI, sans-serif">SD</text>
++</svg>
+diff --git a/guest-web/public/manifest.webmanifest b/guest-web/public/manifest.webmanifest
+new file mode 100644
+index 0000000000000000000000000000000000000000..e3580640a6d8b3f0f0971a4a18524e8d8ab80a60
+--- /dev/null
++++ b/guest-web/public/manifest.webmanifest
+@@ -0,0 +1,20 @@
++{
++  "name": "Silent Disco Guest",
++  "short_name": "Disco",
++  "start_url": "/",
++  "display": "standalone",
++  "background_color": "#0f172a",
++  "theme_color": "#1d4ed8",
++  "icons": [
++    {
++      "src": "/icon-192.png",
++      "sizes": "192x192",
++      "type": "image/png"
++    },
++    {
++      "src": "/icon-512.png",
++      "sizes": "512x512",
++      "type": "image/png"
++    }
++  ]
++}
+diff --git a/guest-web/public/sw.js b/guest-web/public/sw.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..1afd07a854203eef1a8ec343b4427d21ec53d5e6
+--- /dev/null
++++ b/guest-web/public/sw.js
+@@ -0,0 +1,11 @@
++self.addEventListener('install', (event) => {
++  event.waitUntil(
++    caches.open('silent-disco-v1').then((cache) => cache.addAll(['/','/index.html','/manifest.webmanifest']))
++  );
++});
++
++self.addEventListener('fetch', (event) => {
++  event.respondWith(
++    caches.match(event.request).then((response) => response || fetch(event.request))
++  );
++});
+diff --git a/guest-web/src/App.tsx b/guest-web/src/App.tsx
+new file mode 100644
+index 0000000000000000000000000000000000000000..facef1d8969335c0390c3b99d14165efcddcaf17
+--- /dev/null
++++ b/guest-web/src/App.tsx
+@@ -0,0 +1,62 @@
++import React, { useEffect, useMemo, useState } from 'react';
++import { Player } from './components/Player';
++import { SyncIndicator } from './components/SyncIndicator';
++import { TapButton } from './components/TapButton';
++import { useClockSync } from './lib/clockSync';
++import { useBeatBus } from './lib/beatBus';
++import { GuestStatus } from './lib/livekitClient';
++
++const App: React.FC = () => {
++  const [status, setStatus] = useState<GuestStatus>({
++    state: 'disconnected',
++    driftMs: 0,
++    guestCount: 0
++  });
++  const { offsetMs, latencyMs, connectClock, disconnectClock } = useClockSync();
++  const { bpm, phase, connectBeatBus, disconnectBeatBus } = useBeatBus();
++
++  const endpoint = useMemo(() => ({
++    url: import.meta.env.VITE_LIVEKIT_URL ?? window.location.origin.replace(/:\d+$/, ':' + (import.meta.env.VITE_LIVEKIT_PORT ?? '3443')),
++    tokenEndpoint: import.meta.env.VITE_TOKEN_ENDPOINT ?? '/token'
++  }), []);
++
++  useEffect(() => {
++    connectClock();
++    connectBeatBus();
++    return () => {
++      disconnectClock();
++      disconnectBeatBus();
++    };
++  }, [connectClock, connectBeatBus, disconnectClock, disconnectBeatBus]);
++
++  return (
++    <div className="app">
++      <header>
++        <h1>Silent Disco</h1>
++        <SyncIndicator driftMs={status.driftMs} latencyMs={latencyMs} offsetMs={offsetMs} bpm={bpm} />
++      </header>
++      <main>
++        <Player endpoint={endpoint} onStatusChange={setStatus} />
++        <section className="status-panel">
++          <h2>Connection</h2>
++          <p>Status: <strong>{status.state}</strong></p>
++          <p>Guests in room: {status.guestCount}</p>
++          <p>Drift: {status.driftMs.toFixed(1)} ms</p>
++          <p>Latency: {latencyMs.toFixed(1)} ms</p>
++          <p>Clock offset: {offsetMs.toFixed(1)} ms</p>
++        </section>
++        <section className="beat-panel">
++          <h2>Beat Bus</h2>
++          <p>BPM: {bpm ? bpm.toFixed(1) : '—'}</p>
++          <p>Phase: {phase ? phase.toFixed(2) : '—'}</p>
++          <TapButton />
++        </section>
++      </main>
++      <footer>
++        <span>Ensure you are connected to the host Wi-Fi.</span>
++      </footer>
++    </div>
++  );
++};
++
++export default App;
+diff --git a/guest-web/src/components/Player.tsx b/guest-web/src/components/Player.tsx
+new file mode 100644
+index 0000000000000000000000000000000000000000..f788f447cc02e2392b37d70a2b64a6aa44e771f1
+--- /dev/null
++++ b/guest-web/src/components/Player.tsx
+@@ -0,0 +1,85 @@
++import React, { useEffect, useRef } from 'react';
++import { connectToLiveKit, GuestStatus, LiveKitEndpoint } from '../lib/livekitClient';
++
++type PlayerProps = {
++  endpoint: LiveKitEndpoint;
++  offsetMs: number;
++  onStatusChange: React.Dispatch<React.SetStateAction<GuestStatus>>;
++};
++
++export const Player: React.FC<PlayerProps> = ({ endpoint, offsetMs, onStatusChange }) => {
++  const audioRef = useRef<HTMLAudioElement | null>(null);
++  const syncAnchor = useRef<number | null>(null);
++  const syncInterval = useRef<number | null>(null);
++
++  useEffect(() => {
++    if (!audioRef.current) {
++      audioRef.current = new Audio();
++      audioRef.current.autoplay = true;
++      audioRef.current.preload = 'auto';
++    }
++
++    const element = audioRef.current;
++
++    let dispose: (() => void) | null = null;
++    let cancelled = false;
++
++    connectToLiveKit({
++      endpoint,
++      audioElement: element,
++      onStatusChange: onStatusChange
++    })
++      .then((fn) => {
++        if (cancelled) {
++          fn();
++        } else {
++          dispose = fn;
++        }
++      })
++      .catch((err) => {
++        console.error('LiveKit connection failed', err);
++        onStatusChange((prev) => ({ ...prev, state: 'disconnected' }));
++      });
++
++    return () => {
++      cancelled = true;
++      dispose?.();
++    };
++  }, [endpoint, onStatusChange]);
++
++  useEffect(() => {
++    const element = audioRef.current;
++    if (!element) return;
++
++    const updateDrift = () => {
++      if (!element || element.paused) {
++        return;
++      }
++      const hostNow = Date.now() + offsetMs;
++      if (syncAnchor.current === null) {
++        syncAnchor.current = hostNow - element.currentTime * 1000;
++        return;
++      }
++      const expectedTime = (hostNow - syncAnchor.current) / 1000;
++      const diff = expectedTime - element.currentTime;
++      const limited = Math.max(-0.05, Math.min(0.05, diff));
++      if (Math.abs(limited) > 0.03) {
++        element.currentTime += limited * 0.5;
++      }
++      const correction = Math.max(0.995, Math.min(1.005, 1 + limited * 0.1));
++      element.playbackRate = correction;
++      onStatusChange((prev) => ({ ...prev, driftMs: limited * 1000 }));
++    };
++
++    updateDrift();
++    syncInterval.current = window.setInterval(updateDrift, 1000);
++
++    return () => {
++      if (syncInterval.current) {
++        window.clearInterval(syncInterval.current);
++      }
++    };
++  }, [offsetMs, onStatusChange]);
++
++  return <audio ref={audioRef} hidden />;
++};
+diff --git a/guest-web/src/components/SyncIndicator.tsx b/guest-web/src/components/SyncIndicator.tsx
+new file mode 100644
+index 0000000000000000000000000000000000000000..03e9bcb984328afb5dfbf1e60b406547562f7aab
+--- /dev/null
++++ b/guest-web/src/components/SyncIndicator.tsx
+@@ -0,0 +1,32 @@
++import React from 'react';
++
++type Props = {
++  driftMs: number;
++  latencyMs: number;
++  offsetMs: number;
++  bpm: number | null;
++};
++
++export const SyncIndicator: React.FC<Props> = ({ driftMs, latencyMs, offsetMs, bpm }) => {
++  const driftClass = Math.abs(driftMs) < 30 ? 'good' : Math.abs(driftMs) < 80 ? 'warn' : 'bad';
++  return (
++    <div className={`sync-indicator ${driftClass}`}>
++      <div className="metric">
++        <span>Drift</span>
++        <strong>{driftMs.toFixed(1)} ms</strong>
++      </div>
++      <div className="metric">
++        <span>Latency</span>
++        <strong>{latencyMs.toFixed(1)} ms</strong>
++      </div>
++      <div className="metric">
++        <span>Offset</span>
++        <strong>{offsetMs.toFixed(1)} ms</strong>
++      </div>
++      <div className="metric">
++        <span>BPM</span>
++        <strong>{bpm ? bpm.toFixed(1) : '—'}</strong>
++      </div>
++    </div>
++  );
++};
+diff --git a/guest-web/src/components/TapButton.tsx b/guest-web/src/components/TapButton.tsx
+new file mode 100644
+index 0000000000000000000000000000000000000000..edb126e9390134a3fa554a1654b2754e1c023a6f
+--- /dev/null
++++ b/guest-web/src/components/TapButton.tsx
+@@ -0,0 +1,29 @@
++import React, { useRef, useState } from 'react';
++
++export const TapButton: React.FC = () => {
++  const taps = useRef<number[]>([]);
++  const [bpm, setBpm] = useState<number | null>(null);
++
++  const handleTap = () => {
++    const now = Date.now();
++    taps.current.push(now);
++    taps.current = taps.current.filter((t) => now - t < 8000);
++    if (taps.current.length < 2) {
++      setBpm(null);
++      return;
++    }
++    const intervals: number[] = [];
++    for (let i = 1; i < taps.current.length; i++) {
++      intervals.push(taps.current[i] - taps.current[i - 1]);
++    }
++    const avg = intervals.reduce((acc, cur) => acc + cur, 0) / intervals.length;
++    setBpm(60000 / avg);
++  };
++
++  return (
++    <div className="tap-button">
++      <button onClick={handleTap}>Tap to Sync</button>
++      <p>{bpm ? `${bpm.toFixed(1)} BPM` : 'Tap along with the beat'}</p>
++    </div>
++  );
++};
+diff --git a/guest-web/src/lib/beatBus.ts b/guest-web/src/lib/beatBus.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..54e9e8f2b89a9a9e019d4374ab1d10dbc8f76836
+--- /dev/null
++++ b/guest-web/src/lib/beatBus.ts
+@@ -0,0 +1,37 @@
++import { useCallback, useRef, useState } from 'react';
++
++export function useBeatBus() {
++  const [bpm, setBpm] = useState<number | null>(null);
++  const [phase, setPhase] = useState<number | null>(null);
++  const socketRef = useRef<WebSocket | null>(null);
++
++  const connectBeatBus = useCallback(() => {
++    if (socketRef.current) return;
++    const origin = window.location.origin.replace('http', 'ws');
++    const url = (import.meta.env.VITE_BEATBUS_WS ?? `${origin}/ws/beat`);
++    try {
++      const socket = new WebSocket(url);
++      socketRef.current = socket;
++      socket.addEventListener('message', (event) => {
++        const data = JSON.parse(event.data);
++        if (data.type === 'beat') {
++          setBpm(data.bpm ?? null);
++          setPhase(data.phase ?? null);
++        }
++      });
++      socket.addEventListener('close', () => {
++        socketRef.current = null;
++      });
++      socket.addEventListener('error', () => socket.close());
++    } catch (err) {
++      console.warn('Unable to connect to beat bus', err);
++    }
++  }, []);
++
++  const disconnectBeatBus = useCallback(() => {
++    socketRef.current?.close();
++    socketRef.current = null;
++  }, []);
++
++  return { bpm, phase, connectBeatBus, disconnectBeatBus };
++}
+diff --git a/guest-web/src/lib/clockSync.ts b/guest-web/src/lib/clockSync.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..85c6aea69c6cda4645b5a9e36814d1cc0d5ea19c
+--- /dev/null
++++ b/guest-web/src/lib/clockSync.ts
+@@ -0,0 +1,63 @@
++import { useCallback, useRef, useState } from 'react';
++
++const DEFAULT_TARGET = 250;
++
++export function useClockSync() {
++  const [offsetMs, setOffsetMs] = useState(0);
++  const [latencyMs, setLatencyMs] = useState(DEFAULT_TARGET);
++  const socketRef = useRef<WebSocket | null>(null);
++  const timerRef = useRef<number | null>(null);
++
++  const connectClock = useCallback(() => {
++    if (socketRef.current) {
++      return;
++    }
++    const origin = window.location.origin.replace('http', 'ws');
++    const url = (import.meta.env.VITE_SYNC_WS ?? `${origin}/ws/sync`);
++    try {
++      const socket = new WebSocket(url);
++      socketRef.current = socket;
++      socket.addEventListener('open', () => {
++        const sendPing = () => {
++          const timestamp = Date.now();
++          socket.send(JSON.stringify({ type: 'ping', client: timestamp }));
++        };
++        sendPing();
++        timerRef.current = window.setInterval(sendPing, 3000);
++      });
++      socket.addEventListener('message', (event) => {
++        const data = JSON.parse(event.data);
++        if (data.type === 'pong') {
++          const now = Date.now();
++          const rtt = now - data.client;
++          const serverTime: number = data.server;
++          const latency = rtt / 2;
++          const offset = serverTime - (data.client + latency);
++          setOffsetMs((prev) => (prev * 0.7 + offset * 0.3));
++          setLatencyMs((prev) => (prev * 0.7 + latency * 0.3));
++        }
++      });
++      socket.addEventListener('close', () => {
++        socketRef.current = null;
++        if (timerRef.current) {
++          window.clearInterval(timerRef.current);
++          timerRef.current = null;
++        }
++      });
++      socket.addEventListener('error', () => socket.close());
++    } catch (err) {
++      console.warn('Unable to connect to sync service', err);
++    }
++  }, []);
++
++  const disconnectClock = useCallback(() => {
++    socketRef.current?.close();
++    socketRef.current = null;
++    if (timerRef.current) {
++      window.clearInterval(timerRef.current);
++      timerRef.current = null;
++    }
++  }, []);
++
++  return { offsetMs, latencyMs, connectClock, disconnectClock };
++}
+diff --git a/guest-web/src/lib/livekitClient.ts b/guest-web/src/lib/livekitClient.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..c1c8cbe262f5a3d3639a8c8f3e8550d1697c0e2e
+--- /dev/null
++++ b/guest-web/src/lib/livekitClient.ts
+@@ -0,0 +1,79 @@
++import { Room, RoomEvent, RemoteTrackPublication, RemoteParticipant, AudioTrack } from 'livekit-client';
++import type { Dispatch, SetStateAction } from 'react';
++
++export type LiveKitEndpoint = {
++  url: string;
++  tokenEndpoint: string;
++};
++
++export type GuestStatus = {
++  state: 'disconnected' | 'connecting' | 'connected' | 'buffering';
++  driftMs: number;
++  guestCount: number;
++};
++
++type ConnectOptions = {
++  endpoint: LiveKitEndpoint;
++  audioElement: HTMLAudioElement;
++  onStatusChange: Dispatch<SetStateAction<GuestStatus>>;
++};
++
++async function requestToken(endpoint: LiveKitEndpoint): Promise<string> {
++  const identity = `guest-${Math.random().toString(36).slice(2)}`;
++  const room = new URL(endpoint.url).searchParams.get('room') ?? 'disco';
++  const tokenUrl = new URL(endpoint.tokenEndpoint, window.location.origin);
++  tokenUrl.searchParams.set('identity', identity);
++  tokenUrl.searchParams.set('room', room);
++  const response = await fetch(tokenUrl.toString());
++  if (!response.ok) {
++    throw new Error('Unable to request LiveKit token');
++  }
++  const { token } = await response.json();
++  return token;
++}
++
++function attachAudio(track: AudioTrack, element: HTMLAudioElement) {
++  track.attach(element);
++  element.volume = 1;
++  element.play().catch(() => {
++    // User gesture required
++  });
++}
++
++export async function connectToLiveKit(options: ConnectOptions): Promise<() => void> {
++  const { endpoint, audioElement, onStatusChange } = options;
++  const room = new Room({ adaptiveStream: true, dynacast: true });
++
++  onStatusChange((prev) => ({ ...prev, state: 'connecting' }));
++  const token = await requestToken(endpoint);
++  await room.connect(endpoint.url, token);
++
++  const handleTrackSubscribed = (track: AudioTrack, _publication: RemoteTrackPublication, _participant: RemoteParticipant) => {
++    if (track.kind === 'audio') {
++      attachAudio(track, audioElement);
++      onStatusChange((prev) => ({ ...prev, state: 'connected' }));
++    }
++  };
++
++  const handleTrackUnsubscribed = () => {
++    onStatusChange((prev) => ({ ...prev, state: 'buffering' }));
++  };
++
++  const updateCounts = () => {
++    const participants = room.participants.size + (room.localParticipant ? 1 : 0);
++    onStatusChange((prev) => ({ ...prev, guestCount: participants }));
++  };
++
++  room
++    .on(RoomEvent.TrackSubscribed, handleTrackSubscribed)
++    .on(RoomEvent.TrackUnsubscribed, handleTrackUnsubscribed)
++    .on(RoomEvent.Disconnected, () => onStatusChange((prev) => ({ ...prev, state: 'disconnected' })))
++    .on(RoomEvent.ParticipantConnected, updateCounts)
++    .on(RoomEvent.ParticipantDisconnected, updateCounts);
++
++  updateCounts();
++
++  return () => {
++    room.disconnect();
++  };
++}
+diff --git a/guest-web/src/main.tsx b/guest-web/src/main.tsx
+new file mode 100644
+index 0000000000000000000000000000000000000000..3be6368644b4c66f32eba74af1c54ef129dd9c15
+--- /dev/null
++++ b/guest-web/src/main.tsx
+@@ -0,0 +1,16 @@
++import React from 'react';
++import ReactDOM from 'react-dom/client';
++import App from './App';
++import './styles.css';
++
++ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
++  <React.StrictMode>
++    <App />
++  </React.StrictMode>
++);
++
++if ('serviceWorker' in navigator) {
++  window.addEventListener('load', () => {
++    navigator.serviceWorker.register('/sw.js').catch((err) => console.error('SW registration failed', err));
++  });
++}
+diff --git a/guest-web/src/styles.css b/guest-web/src/styles.css
+new file mode 100644
+index 0000000000000000000000000000000000000000..a246ce7a1e84ce729382f28e74da6bdad0bde4e9
+--- /dev/null
++++ b/guest-web/src/styles.css
+@@ -0,0 +1,127 @@
++:root {
++  font-family: 'Inter', system-ui, sans-serif;
++  background: #020617;
++  color: #e2e8f0;
++}
++
++body {
++  margin: 0;
++  min-height: 100vh;
++  background: radial-gradient(circle at top, rgba(37, 99, 235, 0.3), transparent 60%), #020617;
++}
++
++.app {
++  display: flex;
++  flex-direction: column;
++  min-height: 100vh;
++  padding: 1.5rem;
++  max-width: 720px;
++  margin: 0 auto;
++}
++
++header {
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  margin-bottom: 1.5rem;
++}
++
++header h1 {
++  margin: 0;
++  font-size: 2rem;
++  color: #93c5fd;
++}
++
++.sync-indicator {
++  display: grid;
++  grid-template-columns: repeat(4, minmax(0, 1fr));
++  gap: 0.75rem;
++  background: rgba(30, 64, 175, 0.25);
++  padding: 0.75rem 1rem;
++  border-radius: 999px;
++  border: 1px solid rgba(59, 130, 246, 0.4);
++}
++
++.sync-indicator.warn {
++  border-color: rgba(234, 179, 8, 0.5);
++}
++
++.sync-indicator.bad {
++  border-color: rgba(220, 38, 38, 0.6);
++}
++
++.metric {
++  text-align: center;
++  font-size: 0.85rem;
++}
++
++.metric strong {
++  display: block;
++  font-size: 1rem;
++  margin-top: 0.25rem;
++}
++
++main {
++  flex: 1;
++  display: grid;
++  gap: 1.5rem;
++}
++
++section {
++  background: rgba(15, 23, 42, 0.9);
++  border-radius: 1rem;
++  padding: 1.2rem;
++  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.6);
++  backdrop-filter: blur(16px);
++}
++
++.tap-button {
++  display: flex;
++  flex-direction: column;
++  align-items: center;
++  gap: 0.5rem;
++}
++
++.tap-button p {
++  margin: 0;
++  color: #cbd5f5;
++}
++
++.status-panel p,
++.beat-panel p {
++  margin: 0.2rem 0;
++  font-size: 0.95rem;
++}
++
++footer {
++  text-align: center;
++  margin-top: 1.5rem;
++  color: #94a3b8;
++}
++
++button {
++  padding: 0.7rem 1.2rem;
++  border-radius: 999px;
++  border: none;
++  background: linear-gradient(135deg, #2563eb, #7c3aed);
++  color: #fff;
++  font-weight: 600;
++  cursor: pointer;
++  transition: transform 0.2s ease, box-shadow 0.2s ease;
++}
++
++button:hover {
++  transform: translateY(-1px);
++  box-shadow: 0 10px 30px rgba(37, 99, 235, 0.45);
++}
++
++@media (max-width: 600px) {
++  .app {
++    padding: 1rem;
++  }
++
++  header {
++    flex-direction: column;
++    gap: 0.75rem;
++  }
++}
+diff --git a/guest-web/tsconfig.json b/guest-web/tsconfig.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..a37309b3f4bac870ff948ac58726875814eaf065
+--- /dev/null
++++ b/guest-web/tsconfig.json
+@@ -0,0 +1,21 @@
++{
++  "compilerOptions": {
++    "target": "ESNext",
++    "useDefineForClassFields": true,
++    "lib": ["DOM", "DOM.Iterable", "ESNext"],
++    "allowJs": false,
++    "skipLibCheck": true,
++    "esModuleInterop": true,
++    "allowSyntheticDefaultImports": true,
++    "strict": true,
++    "forceConsistentCasingInFileNames": true,
++    "module": "ESNext",
++    "moduleResolution": "Node",
++    "resolveJsonModule": true,
++    "isolatedModules": true,
++    "noEmit": true,
++    "jsx": "react-jsx"
++  },
++  "include": ["src"],
++  "references": [{ "path": "./tsconfig.node.json" }]
++}
+diff --git a/guest-web/tsconfig.node.json b/guest-web/tsconfig.node.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..9d31e2aed93c876bc048cf2f863cb2a847c901e8
+--- /dev/null
++++ b/guest-web/tsconfig.node.json
+@@ -0,0 +1,9 @@
++{
++  "compilerOptions": {
++    "composite": true,
++    "module": "ESNext",
++    "moduleResolution": "Node",
++    "allowSyntheticDefaultImports": true
++  },
++  "include": ["vite.config.ts"]
++}
+diff --git a/guest-web/vite.config.ts b/guest-web/vite.config.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..3163372fa62b56818675ba985ad14973a2a15d8f
+--- /dev/null
++++ b/guest-web/vite.config.ts
+@@ -0,0 +1,27 @@
++import { defineConfig, loadEnv } from 'vite';
++import react from '@vitejs/plugin-react';
++
++export default defineConfig(({ mode }) => {
++  const env = loadEnv(mode, process.cwd(), '');
++  const hostDomain = env.HOST_DOMAIN || 'silent-disco.local';
++  const httpsPort = env.HTTPS_PORT || '3443';
++  const livekitUrl = env.LIVEKIT_URL || `https://${hostDomain}:${httpsPort}`;
++  const tokenEndpoint = env.TOKEN_ENDPOINT || `${livekitUrl}/api/token`;
++  return {
++    plugins: [react()],
++    server: {
++      host: true,
++      port: parseInt(env.GUEST_WEB_PORT || '4173', 10)
++    },
++    define: {
++      'import.meta.env.VITE_LIVEKIT_URL': JSON.stringify(livekitUrl),
++      'import.meta.env.VITE_LIVEKIT_PORT': JSON.stringify(env.LIVEKIT_PORT || httpsPort),
++      'import.meta.env.VITE_TOKEN_ENDPOINT': JSON.stringify(tokenEndpoint),
++      'import.meta.env.VITE_SYNC_WS': JSON.stringify(env.SYNC_WS || ''),
++      'import.meta.env.VITE_BEATBUS_WS': JSON.stringify(env.BEATBUS_WS || '')
++    },
++    build: {
++      outDir: 'dist'
++    }
++  };
++});
+diff --git a/host-gui/electron-builder.yml b/host-gui/electron-builder.yml
+new file mode 100644
+index 0000000000000000000000000000000000000000..35591fd0eb59650a2b5918062f7d846bc00dd2c3
+--- /dev/null
++++ b/host-gui/electron-builder.yml
+@@ -0,0 +1,17 @@
++appId: com.silentdisco.hostcontrol
++productName: HostControl
++win:
++  target:
++    - nsis
++  icon: build/icon.ico
++files:
++  - dist/**/*
++  - src/**/*
++  - package.json
++extraResources:
++  - from: ../certs
++    to: certs
++nsis:
++  oneClick: false
++  perMachine: true
++  allowToChangeInstallationDirectory: true
+diff --git a/host-gui/package.json b/host-gui/package.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..c308eec9722783aab682fa0998aa00110db3fbbb
+--- /dev/null
++++ b/host-gui/package.json
+@@ -0,0 +1,21 @@
++{
++  "name": "host-control",
++  "version": "0.1.0",
++  "description": "Silent Disco host control center",
++  "main": "src/main.js",
++  "scripts": {
++    "start": "electron .",
++    "build": "electron-builder",
++    "lint": "echo \"No lint configured\""
++  },
++  "author": "Silent Disco",
++  "license": "MIT",
++  "dependencies": {
++    "dotenv": "^16.4.5",
++    "qrcode": "^1.5.4"
++  },
++  "devDependencies": {
++    "electron": "^27.1.0",
++    "electron-builder": "^24.6.4"
++  }
++}
+diff --git a/host-gui/src/main.js b/host-gui/src/main.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..4f4aea4beab01fd9b251717ac17128f87f54fb9d
+--- /dev/null
++++ b/host-gui/src/main.js
+@@ -0,0 +1,183 @@
++const { app, BrowserWindow, ipcMain, shell } = require('electron');
++const path = require('path');
++const fs = require('fs');
++const os = require('os');
++const { execSync } = require('child_process');
++const dotenv = require('dotenv');
++const QRCode = require('qrcode');
++
++let mainWindow;
++
++function getProjectRoot() {
++  return path.resolve(__dirname, '..', '..');
++}
++
++function loadEnv() {
++  const envPath = path.join(getProjectRoot(), '.env');
++  if (!fs.existsSync(envPath)) {
++    return {};
++  }
++  const parsed = dotenv.parse(fs.readFileSync(envPath));
++  return parsed;
++}
++
++function getLanAddresses() {
++  const interfaces = os.networkInterfaces();
++  const addresses = [];
++  for (const name of Object.keys(interfaces)) {
++    for (const iface of interfaces[name] ?? []) {
++      if (iface.family === 'IPv4' && !iface.internal) {
++        addresses.push({ name, address: iface.address });
++      }
++    }
++  }
++  return addresses;
++}
++
++function tryDocker(command) {
++  try {
++    const output = execSync(command, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
++    return output.trim();
++  } catch (err) {
++    return null;
++  }
++}
++
++function detectDockerStatus() {
++  const info = tryDocker('docker info');
++  if (!info) {
++    return { available: false, running: false };
++  }
++  const ps = tryDocker(`docker compose -f "${path.join(getProjectRoot(), 'server', 'docker-compose.yml')}" ps --status running`);
++  return { available: true, running: Boolean(ps) };
++}
++
++function detectFallbackStatus() {
++  try {
++    const list = execSync('tasklist', { encoding: 'utf8' });
++    const running = list.toLowerCase().includes('livekit-server.exe');
++    return running;
++  } catch (err) {
++    return false;
++  }
++}
++
++function readGuestMetrics() {
++  const metricsPath = path.join(getProjectRoot(), 'logs', 'guest-metrics.json');
++  if (!fs.existsSync(metricsPath)) {
++    return {
++      guests: 0,
++      drift: { min: 0, avg: 0, max: 0 },
++      bpm: null,
++      phase: null
++    };
++  }
++  try {
++    const data = JSON.parse(fs.readFileSync(metricsPath, 'utf8'));
++    return data;
++  } catch (err) {
++    return {
++      guests: 0,
++      drift: { min: 0, avg: 0, max: 0 },
++      bpm: null,
++      phase: null
++    };
++  }
++}
++
++async function buildQrData(url) {
++  try {
++    return await QRCode.toDataURL(url, { margin: 1, scale: 6 });
++  } catch (err) {
++    return null;
++  }
++}
++
++function getLatestLog() {
++  const logDir = path.join(getProjectRoot(), 'logs');
++  if (!fs.existsSync(logDir)) {
++    return [];
++  }
++  const files = fs.readdirSync(logDir).filter(f => f.startsWith('livekit'));
++  if (files.length === 0) {
++    return [];
++  }
++  files.sort();
++  const content = fs.readFileSync(path.join(logDir, files[files.length - 1]), 'utf8');
++  return content.split('\n').slice(-200);
++}
++
++function subscribeLogs(event) {
++  const logDir = path.join(getProjectRoot(), 'logs');
++  if (!fs.existsSync(logDir)) {
++    return;
++  }
++  const watcher = fs.watch(logDir, () => {
++    const lines = getLatestLog();
++    event.sender.send('logs:update', lines);
++  });
++  event.sender.once('destroyed', () => watcher.close());
++}
++
++async function gatherStatus() {
++  const env = loadEnv();
++  const network = getLanAddresses();
++  const docker = detectDockerStatus();
++  const fallback = detectFallbackStatus();
++  const metrics = readGuestMetrics();
++  const httpsUrl = env.HOST_DOMAIN && env.HTTPS_PORT ? `https://${env.HOST_DOMAIN}:${env.HTTPS_PORT}` : null;
++  const qr = httpsUrl ? await buildQrData(httpsUrl) : null;
++  return { env, network, docker, fallback, metrics, qr };
++}
++
++function createWindow() {
++  mainWindow = new BrowserWindow({
++    width: 1200,
++    height: 800,
++    webPreferences: {
++      preload: path.join(__dirname, 'preload.js')
++    }
++  });
++
++  mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
++  mainWindow.on('closed', () => {
++    mainWindow = null;
++  });
++}
++
++ipcMain.handle('status:get', async () => {
++  return await gatherStatus();
++});
++
++ipcMain.handle('logs:read', () => {
++  return getLatestLog();
++});
++
++ipcMain.on('logs:subscribe', (event) => {
++  subscribeLogs(event);
++});
++
++ipcMain.handle('open:docs', (event, doc) => {
++  const filePath = path.join(getProjectRoot(), 'docs', doc);
++  if (fs.existsSync(filePath)) {
++    shell.openPath(filePath);
++    return true;
++  }
++  return false;
++});
++
++app.whenReady().then(() => {
++  createWindow();
++
++  app.on('activate', () => {
++    if (BrowserWindow.getAllWindows().length === 0) {
++      createWindow();
++    }
++  });
++});
++
++app.on('window-all-closed', () => {
++  if (process.platform !== 'darwin') {
++    app.quit();
++  }
++});
+diff --git a/host-gui/src/preload.js b/host-gui/src/preload.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..3dfe0e466bfab81ddba7156b3a2ba5b52d35628e
+--- /dev/null
++++ b/host-gui/src/preload.js
+@@ -0,0 +1,11 @@
++const { contextBridge, ipcRenderer } = require('electron');
++
++contextBridge.exposeInMainWorld('hostApi', {
++  getStatus: () => ipcRenderer.invoke('status:get'),
++  readLogs: () => ipcRenderer.invoke('logs:read'),
++  subscribeLogs: (callback) => {
++    ipcRenderer.on('logs:update', (_event, lines) => callback(lines));
++    ipcRenderer.send('logs:subscribe');
++  },
++  openDoc: (doc) => ipcRenderer.invoke('open:docs', doc)
++});
+diff --git a/host-gui/src/renderer/app.js b/host-gui/src/renderer/app.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..5c80c8f9ec129fa706c5dc113318261ab95925d6
+--- /dev/null
++++ b/host-gui/src/renderer/app.js
+@@ -0,0 +1,148 @@
++const state = {
++  tapTimes: []
++};
++
++const tabButtons = document.querySelectorAll('#tabs button');
++const tabContents = document.querySelectorAll('.tab-content');
++
++tabButtons.forEach((button) => {
++  button.addEventListener('click', () => {
++    const target = button.dataset.tab;
++    tabButtons.forEach((btn) => btn.classList.toggle('active', btn === button));
++    tabContents.forEach((content) => {
++      content.classList.toggle('active', content.id === `tab-${target}`);
++    });
++  });
++});
++
++async function refreshStatus() {
++  const indicator = document.getElementById('status-indicator');
++  indicator.textContent = 'Refreshing...';
++  try {
++    const status = await window.hostApi.getStatus();
++    indicator.textContent = 'Ready';
++    renderStatus(status);
++  } catch (err) {
++    indicator.textContent = 'Error fetching status';
++    console.error(err);
++  }
++}
++
++function renderStatus(status) {
++  const dockerEl = document.getElementById('docker-status');
++  const fallbackEl = document.getElementById('fallback-status');
++  const lanList = document.getElementById('lan-list');
++  const whipUrl = document.getElementById('whip-url');
++  const streamKey = document.getElementById('stream-key');
++  const guestHttps = document.getElementById('guest-https');
++  const obsServer = document.getElementById('obs-server');
++  const obsKey = document.getElementById('obs-key');
++  const guestCount = document.getElementById('guest-count');
++  const guestDrift = document.getElementById('guest-drift');
++  const guestStatus = document.getElementById('guest-status');
++  const envTable = document.getElementById('env-table');
++
++  dockerEl.textContent = status.docker.available
++    ? status.docker.running ? 'Running' : 'Stopped'
++    : 'Unavailable';
++  fallbackEl.textContent = status.fallback ? 'Running' : 'Idle';
++
++  lanList.innerHTML = '';
++  status.network.forEach((iface) => {
++    const li = document.createElement('li');
++    li.textContent = `${iface.name}: ${iface.address}`;
++    lanList.appendChild(li);
++  });
++
++  whipUrl.textContent = status.env.WHIP_URL || '--';
++  streamKey.textContent = status.env.WHIP_STREAM_KEY || '--';
++  guestHttps.textContent = status.env.HOST_DOMAIN
++    ? `https://${status.env.HOST_DOMAIN}:${status.env.HTTPS_PORT}`
++    : '--';
++  obsServer.textContent = status.env.WHIP_URL || '--';
++  obsKey.textContent = status.env.WHIP_STREAM_KEY || '--';
++
++  guestCount.textContent = status.metrics.guests ?? 0;
++  const drift = status.metrics.drift || { min: 0, avg: 0, max: 0 };
++  guestDrift.textContent = `${drift.min} / ${drift.avg} / ${drift.max}`;
++  guestStatus.textContent = status.metrics.guests > 0 ? 'Active audience' : 'Awaiting listeners';
++
++  const bpmEl = document.getElementById('bpm');
++  const phaseEl = document.getElementById('phase');
++  bpmEl.textContent = status.metrics.bpm ? `${status.metrics.bpm.toFixed(1)} BPM` : 'Not set';
++  phaseEl.textContent = status.metrics.phase ? `${status.metrics.phase}` : 'Not set';
++
++  envTable.innerHTML = '';
++  Object.keys(status.env).forEach((key) => {
++    const row = document.createElement('tr');
++    const keyCell = document.createElement('td');
++    keyCell.textContent = key;
++    const valueCell = document.createElement('td');
++    valueCell.textContent = status.env[key];
++    row.appendChild(keyCell);
++    row.appendChild(valueCell);
++    envTable.appendChild(row);
++  });
++
++  if (status.qr) {
++    const qrCanvas = document.getElementById('qr');
++    const ctx = qrCanvas.getContext('2d');
++    const img = new Image();
++    img.onload = () => {
++      ctx.clearRect(0, 0, qrCanvas.width, qrCanvas.height);
++      ctx.drawImage(img, 0, 0, qrCanvas.width, qrCanvas.height);
++    };
++    img.src = status.qr;
++  }
++}
++
++async function loadLogs() {
++  const logEl = document.getElementById('logs');
++  const lines = await window.hostApi.readLogs();
++  if (lines.length === 0) {
++    logEl.textContent = 'No logs yet.';
++  } else {
++    logEl.textContent = lines.join('\n');
++  }
++}
++
++window.hostApi.subscribeLogs((lines) => {
++  const logEl = document.getElementById('logs');
++  logEl.textContent = lines.join('\n');
++});
++
++function handleDocs() {
++  document.getElementById('open-architecture').addEventListener('click', () => {
++    window.hostApi.openDoc('Architecture.md');
++  });
++  document.getElementById('open-troubleshooting').addEventListener('click', () => {
++    window.hostApi.openDoc('Troubleshooting.md');
++  });
++}
++
++function handleTapTempo() {
++  const tapButton = document.getElementById('tap-tempo');
++  const feedback = document.getElementById('tap-feedback');
++  tapButton.addEventListener('click', () => {
++    const now = Date.now();
++    state.tapTimes.push(now);
++    state.tapTimes = state.tapTimes.filter((time) => now - time < 8000);
++    if (state.tapTimes.length >= 2) {
++      const intervals = [];
++      for (let i = 1; i < state.tapTimes.length; i++) {
++        intervals.push(state.tapTimes[i] - state.tapTimes[i - 1]);
++      }
++      const avgInterval = intervals.reduce((acc, cur) => acc + cur, 0) / intervals.length;
++      const bpm = 60000 / avgInterval;
++      feedback.textContent = `Tempo: ${bpm.toFixed(1)} BPM`;
++    } else {
++      feedback.textContent = 'Keep tapping to calculate BPM';
++    }
++  });
++}
++
++handleDocs();
++handleTapTempo();
++refreshStatus();
++loadLogs();
++setInterval(refreshStatus, 10000);
+diff --git a/host-gui/src/renderer/index.html b/host-gui/src/renderer/index.html
+new file mode 100644
+index 0000000000000000000000000000000000000000..2c5f88d20fa4a04c2fb15962d21e49a3fe0c4ec9
+--- /dev/null
++++ b/host-gui/src/renderer/index.html
+@@ -0,0 +1,94 @@
++<!DOCTYPE html>
++<html lang="en">
++  <head>
++    <meta charset="UTF-8" />
++    <title>Silent Disco Host Control</title>
++    <link rel="stylesheet" href="style.css" />
++  </head>
++  <body>
++    <header>
++      <h1>Silent Disco Host Control</h1>
++      <div id="status-indicator">Loading...</div>
++    </header>
++    <nav id="tabs">
++      <button data-tab="status" class="active">Status</button>
++      <button data-tab="obs">OBS Setup</button>
++      <button data-tab="guests">Guests</button>
++      <button data-tab="sync">Sync &amp; BPM</button>
++      <button data-tab="settings">Settings</button>
++      <button data-tab="logs">Logs</button>
++    </nav>
++    <main>
++      <section id="tab-status" class="tab-content active">
++        <div class="grid">
++          <div class="card">
++            <h2>SFU Status</h2>
++            <p><strong>Docker:</strong> <span id="docker-status">--</span></p>
++            <p><strong>Fallback:</strong> <span id="fallback-status">--</span></p>
++            <p><strong>LAN Interfaces:</strong></p>
++            <ul id="lan-list"></ul>
++          </div>
++          <div class="card">
++            <h2>Endpoints</h2>
++            <p><strong>WHIP URL:</strong> <span id="whip-url">--</span></p>
++            <p><strong>Stream Key:</strong> <span id="stream-key">--</span></p>
++            <p><strong>Guest HTTPS:</strong> <span id="guest-https">--</span></p>
++            <canvas id="qr" width="240" height="240"></canvas>
++          </div>
++          <div class="card">
++            <h2>Quick Actions</h2>
++            <button id="open-architecture">Open Architecture Doc</button>
++            <button id="open-troubleshooting">Open Troubleshooting Doc</button>
++            <div class="hint">Use PowerShell scripts to start/stop services.</div>
++          </div>
++        </div>
++      </section>
++      <section id="tab-obs" class="tab-content">
++        <div class="card">
++          <h2>OBS Configuration</h2>
++          <p>Set OBS output to <strong>WHIP</strong> with the following details:</p>
++          <ul>
++            <li>Server URL: <span id="obs-server">--</span></li>
++            <li>Stream Key: <span id="obs-key">--</span></li>
++            <li>Codec: Opus, 128 kbps, 48 kHz</li>
++          </ul>
++          <p>Encoder Preset:</p>
++          <pre id="obs-preset">Container: WebM\nAudio: Opus 128 kbps CBR\nResample: 48 kHz</pre>
++        </div>
++      </section>
++      <section id="tab-guests" class="tab-content">
++        <div class="card">
++          <h2>Guest Overview</h2>
++          <p><strong>Connected Guests:</strong> <span id="guest-count">0</span></p>
++          <p><strong>Drift (ms):</strong> <span id="guest-drift">0 / 0 / 0</span></p>
++          <div id="guest-status">Awaiting data...</div>
++        </div>
++      </section>
++      <section id="tab-sync" class="tab-content">
++        <div class="card">
++          <h2>Sync &amp; BPM</h2>
++          <p><strong>Estimated BPM:</strong> <span id="bpm">--</span></p>
++          <p><strong>Phase:</strong> <span id="phase">--</span></p>
++          <button id="tap-tempo">Tap Tempo</button>
++          <div id="tap-feedback"></div>
++        </div>
++      </section>
++      <section id="tab-settings" class="tab-content">
++        <div class="card">
++          <h2>Configuration</h2>
++          <table id="env-table"></table>
++        </div>
++      </section>
++      <section id="tab-logs" class="tab-content">
++        <div class="card">
++          <h2>Logs</h2>
++          <pre id="logs">No logs yet.</pre>
++        </div>
++      </section>
++    </main>
++    <footer>
++      <span>&copy; Silent Disco 2024</span>
++    </footer>
++    <script src="app.js"></script>
++  </body>
++</html>
+diff --git a/host-gui/src/renderer/style.css b/host-gui/src/renderer/style.css
+new file mode 100644
+index 0000000000000000000000000000000000000000..9502261ee6b8a20228865f59df364f8baafb37ef
+--- /dev/null
++++ b/host-gui/src/renderer/style.css
+@@ -0,0 +1,129 @@
++:root {
++  color-scheme: dark light;
++  font-family: 'Segoe UI', sans-serif;
++  background-color: #0d1117;
++  color: #e6edf3;
++}
++
++body {
++  margin: 0;
++  display: flex;
++  flex-direction: column;
++  min-height: 100vh;
++}
++
++header {
++  padding: 1rem 2rem;
++  background: linear-gradient(90deg, #0f172a, #1e3a8a);
++  color: #fff;
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++}
++
++#tabs {
++  display: flex;
++  background: #111827;
++  border-bottom: 1px solid #1f2937;
++}
++
++#tabs button {
++  flex: 1;
++  padding: 0.75rem;
++  background: none;
++  border: none;
++  color: #9ca3af;
++  font-weight: 600;
++  cursor: pointer;
++}
++
++#tabs button.active {
++  background: #1f2937;
++  color: #fff;
++}
++
++main {
++  flex: 1;
++  padding: 1.5rem;
++  background: #0f172a;
++}
++
++.grid {
++  display: grid;
++  gap: 1rem;
++  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++}
++
++.card {
++  background: #111c2d;
++  border-radius: 12px;
++  padding: 1.2rem;
++  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.4);
++}
++
++.card h2 {
++  margin-top: 0;
++}
++
++.tab-content {
++  display: none;
++}
++
++.tab-content.active {
++  display: block;
++}
++
++#status-indicator {
++  font-weight: 600;
++}
++
++#logs {
++  background: #000;
++  color: #0f0;
++  height: 300px;
++  overflow: auto;
++  padding: 1rem;
++  border-radius: 8px;
++}
++
++footer {
++  padding: 1rem 2rem;
++  background: #0b1220;
++  text-align: center;
++  color: #94a3b8;
++}
++
++button {
++  border-radius: 8px;
++  border: 1px solid #2563eb;
++  background: #1d4ed8;
++  color: #fff;
++  padding: 0.5rem 1rem;
++  font-size: 0.95rem;
++  cursor: pointer;
++  transition: transform 0.2s ease;
++}
++
++button:hover {
++  transform: translateY(-1px);
++}
++
++.hint {
++  margin-top: 0.75rem;
++  color: #94a3b8;
++  font-size: 0.9rem;
++}
++
++#env-table {
++  width: 100%;
++  border-collapse: collapse;
++}
++
++#env-table td {
++  padding: 0.4rem 0.6rem;
++  border-bottom: 1px solid #1f2937;
++}
++
++#env-table td:first-child {
++  font-weight: 600;
++}
+diff --git a/scripts/doctor.ps1 b/scripts/doctor.ps1
+new file mode 100644
+index 0000000000000000000000000000000000000000..4aee764cd71c95f777490c8bd728bf309e7f3403
+--- /dev/null
++++ b/scripts/doctor.ps1
+@@ -0,0 +1,64 @@
++[CmdletBinding()]
++param()
++
++$ErrorActionPreference = 'Stop'
++$root = Split-Path -Parent $PSScriptRoot
++
++function Resolve-ProjectPath {
++    param([string]$Relative)
++    return (Join-Path $root $Relative)
++}
++
++function Import-Env {
++    $envPath = Resolve-ProjectPath '.env'
++    if (-not (Test-Path $envPath)) {
++        throw '.env not found. Run setup.ps1.'
++    }
++    $envTable = @{}
++    foreach ($line in Get-Content $envPath) {
++        if ([string]::IsNullOrWhiteSpace($line)) { continue }
++        $trimmed = $line.Trim()
++        if ($trimmed.StartsWith('#')) { continue }
++        $parts = $trimmed.Split('=', 2)
++        if ($parts.Length -eq 2) { $envTable[$parts[0]] = $parts[1] }
++    }
++    return $envTable
++}
++
++function Test-Service {
++    param(
++        [string]$Name,
++        [ScriptBlock]$Test
++    )
++    try {
++        if (& $Test) {
++            Write-Host "[PASS] $Name" -ForegroundColor Green
++        } else {
++            Write-Host "[FAIL] $Name" -ForegroundColor Red
++        }
++    } catch {
++        Write-Host "[ERROR] $Name - $($_.Exception.Message)" -ForegroundColor Red
++    }
++}
++
++$envTable = Import-Env
++
++Test-Service 'Docker daemon' {
++    $cmd = Get-Command docker -ErrorAction SilentlyContinue
++    if (-not $cmd) { return $false }
++    docker info | Out-Null
++    return $true
++}
++
++Test-Service 'LiveKit docker stack' {
++    if (-not (Get-Command docker -ErrorAction SilentlyContinue)) { return $false }
++    docker compose -f (Resolve-ProjectPath 'server/docker-compose.yml') ps | Select-String 'livekit-server'
++}
++Test-Service 'LiveKit fallback binary' { Test-Path (Resolve-ProjectPath 'server/bin/livekit-server.exe') }
++Test-Service 'Host certificates' { Test-Path (Resolve-ProjectPath "certs/${envTable['HOST_DOMAIN']}+2.pem") }
++Test-Service 'Guest web build' { Test-Path (Resolve-ProjectPath 'guest-web/dist') }
++
++$httpsPort = $envTable['HTTPS_PORT']
++Test-Service "Port $httpsPort" { (Test-NetConnection -ComputerName 'localhost' -Port $httpsPort -WarningAction SilentlyContinue).TcpTestSucceeded }
++
++Write-Host '\nDoctor checks complete.' -ForegroundColor Cyan
+diff --git a/scripts/setup.ps1 b/scripts/setup.ps1
+new file mode 100644
+index 0000000000000000000000000000000000000000..3f15657a88a1998f866c8ad67079d143864fd8ed
+--- /dev/null
++++ b/scripts/setup.ps1
+@@ -0,0 +1,257 @@
++[CmdletBinding()]
++param(
++    [switch]$NonInteractive
++)
++
++$ErrorActionPreference = 'Stop'
++$ProgressPreference = 'SilentlyContinue'
++
++function Test-Administrator {
++    $currentIdentity = [Security.Principal.WindowsIdentity]::GetCurrent()
++    $principal = New-Object Security.Principal.WindowsPrincipal($currentIdentity)
++    return $principal.IsInRole([Security.Principal.WindowsBuiltinRole]::Administrator)
++}
++
++function Ensure-Administrator {
++    if (-not (Test-Administrator)) {
++        Write-Warning 'Administrator privileges are required. Attempting to relaunch elevated.'
++        if ($NonInteractive) { throw 'Cannot elevate in non-interactive mode.' }
++        $psi = New-Object System.Diagnostics.ProcessStartInfo
++        $psi.FileName = 'powershell'
++        $psi.Arguments = "-ExecutionPolicy Bypass -File `"$PSCommandPath`""
++        $psi.Verb = 'runas'
++        try {
++            [System.Diagnostics.Process]::Start($psi) | Out-Null
++            exit
++        } catch {
++            throw 'Elevation cancelled by user.'
++        }
++    }
++}
++
++function Test-CommandExists {
++    param([string]$Command)
++    return (Get-Command $Command -ErrorAction SilentlyContinue) -ne $null
++}
++
++function Invoke-Step {
++    param(
++        [string]$Name,
++        [ScriptBlock]$Action
++    )
++    Write-Host "[+] $Name" -ForegroundColor Cyan
++    try {
++        & $Action
++        Write-Host "    Success" -ForegroundColor Green
++    } catch {
++        Write-Host "    Failed: $($_.Exception.Message)" -ForegroundColor Red
++        throw
++    }
++}
++
++function Ensure-WinGet {
++    if (Test-CommandExists 'winget') { return }
++    Write-Host 'winget not found. Installing App Installer from Microsoft Store...'
++    Start-Process ms-windows-store://pdp/?ProductId=9NBLGGH4NNS1
++    if (-not $NonInteractive) {
++        Read-Host 'Press Enter after App Installer has been installed'
++    }
++    if (-not (Test-CommandExists 'winget')) {
++        throw 'winget installation failed. Install the Microsoft App Installer manually and rerun setup.'
++    }
++}
++
++function Install-PackageIfMissing {
++    param(
++        [string]$PackageId,
++        [string]$CheckCommand,
++        [string]$DisplayName
++    )
++    if (-not (Test-CommandExists $CheckCommand)) {
++        Write-Host "Installing $DisplayName via winget..."
++        winget install --id $PackageId --accept-package-agreements --accept-source-agreements -e | Out-Null
++    } else {
++        Write-Host "$DisplayName already installed."
++    }
++}
++
++function Ensure-Mkcert {
++    if (Test-CommandExists 'mkcert') { return }
++    Write-Host 'Installing mkcert via winget...'
++    winget install --id FiloSottile.mkcert --accept-package-agreements --accept-source-agreements -e | Out-Null
++}
++
++function Initialize-Certificates {
++    param(
++        [string]$CertDir,
++        [string]$Hostname
++    )
++
++    if (-not (Test-Path $CertDir)) {
++        New-Item -ItemType Directory -Path $CertDir | Out-Null
++    }
++
++    Push-Location $CertDir
++    try {
++        if (-not (Test-Path 'rootCA.pem')) {
++            Write-Host 'Installing local CA via mkcert...'
++            mkcert -install | Out-Null
++        }
++
++        $certName = "$Hostname+2.pem"
++        if (-not (Test-Path $certName)) {
++            Write-Host "Generating certificate for $Hostname and localhost..."
++            mkcert $Hostname localhost 127.0.0.1 ::1 | Out-Null
++        } else {
++            Write-Host 'Existing certificates found.'
++        }
++    }
++    finally {
++        Pop-Location
++    }
++}
++
++function Get-ProjectRoot {
++    return (Split-Path -Parent $PSScriptRoot)
++}
++
++function Resolve-ProjectPath {
++    param([string]$Relative)
++    return (Join-Path (Get-ProjectRoot) $Relative)
++}
++
++function Ensure-EnvFile {
++    $envPath = Resolve-ProjectPath '.env'
++    $examplePath = Resolve-ProjectPath '.env.example'
++    if (-not (Test-Path $envPath)) {
++        Copy-Item $examplePath $envPath
++        Write-Host "Created default .env from template at $envPath"
++    }
++}
++
++function Invoke-NpmInstall {
++    param([string]$Path)
++    Push-Location $Path
++    try {
++        if (Test-Path 'package.json') {
++            if (Test-CommandExists 'npm') {
++                npm install --legacy-peer-deps | Out-Null
++            } else {
++                throw 'npm command not found. Ensure Node.js LTS is installed.'
++            }
++        }
++    } finally {
++        Pop-Location
++    }
++}
++
++function Prepare-LiveKitFallback {
++    param(
++        [string]$Destination,
++        [string]$Version
++    )
++
++    if (-not (Test-Path $Destination)) {
++        New-Item -ItemType Directory -Path $Destination | Out-Null
++    }
++
++    $binaryPath = Join-Path $Destination 'livekit-server.exe'
++    if (Test-Path $binaryPath) { return }
++
++    $downloadUrl = "https://github.com/livekit/livekit/releases/download/v$Version/livekit-server-windows-amd64.exe"
++    Write-Host "Downloading LiveKit fallback binary v$Version..."
++    Invoke-WebRequest -Uri $downloadUrl -OutFile $binaryPath
++}
++
++function Ensure-DockerResources {
++    $composePath = Resolve-ProjectPath 'server/docker-compose.yml'
++    if (Test-CommandExists 'docker') {
++        Write-Host 'Pulling Docker images (LiveKit)...'
++        docker compose -f $composePath pull
++    } else {
++        Write-Warning 'Docker not found. Fallback binary will be used during start.'
++    }
++}
++
++function Write-Summary {
++    param([hashtable]$Results)
++    Write-Host '\n=== Setup Summary ===' -ForegroundColor Cyan
++    foreach ($key in $Results.Keys) {
++        $value = $Results[$key]
++        if ($value) {
++            Write-Host "$key : OK" -ForegroundColor Green
++        } else {
++            Write-Host "$key : FAILED" -ForegroundColor Red
++        }
++    }
++    Write-Host '====================='
++}
++
++Ensure-Administrator
++
++$root = Get-ProjectRoot
++$certDir = Resolve-ProjectPath 'certs'
++
++$results = @{}
++
++$steps = @(
++    @{ Name = 'Ensure winget'; Action = { Ensure-WinGet }; Key = 'winget' },
++    @{ Name = 'Install Git'; Action = { Install-PackageIfMissing -PackageId 'Git.Git' -CheckCommand 'git' -DisplayName 'Git' }; Key = 'git' },
++    @{ Name = 'Install Node.js LTS'; Action = { Install-PackageIfMissing -PackageId 'OpenJS.NodeJS.LTS' -CheckCommand 'node' -DisplayName 'Node.js LTS' }; Key = 'node' },
++    @{ Name = 'Install Docker Desktop'; Action = { Install-PackageIfMissing -PackageId 'Docker.DockerDesktop' -CheckCommand 'docker' -DisplayName 'Docker Desktop' }; Key = 'docker'; Optional = $true },
++    @{ Name = 'Install mkcert'; Action = { Ensure-Mkcert }; Key = 'mkcert' },
++    @{ Name = 'Ensure .env'; Action = { Ensure-EnvFile }; Key = 'env' },
++    @{ Name = 'Ensure logs directory'; Action = { if (-not (Test-Path (Resolve-ProjectPath 'logs'))) { New-Item -ItemType Directory -Path (Resolve-ProjectPath 'logs') | Out-Null } }; Key = 'logs dir' }
++)
++
++foreach ($step in $steps) {
++    try {
++        Invoke-Step $step.Name $step.Action
++        $results[$step.Key] = $true
++    } catch {
++        if ($step.Optional) {
++            Write-Warning $_.Exception.Message
++            $results[$step.Key] = $false
++        } else {
++            throw
++        }
++    }
++}
++
++$envPath = Resolve-ProjectPath '.env'
++$envContent = Get-Content $envPath | Where-Object { $_ -and $_ -notmatch '^#' }
++$hostName = ($envContent | Where-Object { $_ -like 'HOST_DOMAIN=*' } | Select-Object -First 1)
++if ($hostName) {
++    $hostName = $hostName.Split('=')[1].Trim()
++} else {
++    $hostName = 'silent-disco.local'
++}
++
++Invoke-Step 'Generate certificates' { Initialize-Certificates -CertDir $certDir -Hostname $hostName }
++$results['certs'] = $true
++
++Invoke-Step 'Install host GUI dependencies' { Invoke-NpmInstall -Path (Resolve-ProjectPath 'host-gui') }
++$results['host-gui deps'] = $true
++
++Invoke-Step 'Install guest web dependencies' { Invoke-NpmInstall -Path (Resolve-ProjectPath 'guest-web') }
++$results['guest-web deps'] = $true
++
++try {
++    Invoke-Step 'Download LiveKit fallback binary' { Prepare-LiveKitFallback -Destination (Resolve-ProjectPath 'server/bin') -Version '1.6.1' }
++    $results['livekit fallback'] = $true
++} catch {
++    Write-Warning $_.Exception.Message
++    $results['livekit fallback'] = $false
++}
++
++try {
++    Invoke-Step 'Pre-pull Docker images' { Ensure-DockerResources }
++    $results['docker images'] = $true
++} catch {
++    Write-Warning $_.Exception.Message
++    $results['docker images'] = $false
++}
++
++Write-Summary -Results $results
++
++Write-Host '\nRun scripts/start_server.ps1 to launch the Silent Disco stack.' -ForegroundColor Cyan
+diff --git a/scripts/start_server.ps1 b/scripts/start_server.ps1
+new file mode 100644
+index 0000000000000000000000000000000000000000..81b1dec153d2ebaf3f82e5b2924f80805b89c278
+--- /dev/null
++++ b/scripts/start_server.ps1
+@@ -0,0 +1,111 @@
++[CmdletBinding()]
++param(
++    [switch]$NoGui
++)
++
++$ErrorActionPreference = 'Stop'
++$root = Split-Path -Parent $PSScriptRoot
++
++function Resolve-ProjectPath {
++    param([string]$Relative)
++    return (Join-Path $root $Relative)
++}
++
++function Import-Env {
++    $envPath = Resolve-ProjectPath '.env'
++    if (-not (Test-Path $envPath)) {
++        throw '.env file missing. Run scripts/setup.ps1 first.'
++    }
++    $envTable = @{}
++    foreach ($line in Get-Content $envPath) {
++        if ([string]::IsNullOrWhiteSpace($line)) { continue }
++        $trimmed = $line.Trim()
++        if ($trimmed.StartsWith('#')) { continue }
++        $parts = $trimmed.Split('=', 2)
++        if ($parts.Length -eq 2) {
++            $envTable[$parts[0]] = $parts[1]
++        }
++    }
++    return $envTable
++}
++
++function Test-DockerAvailable {
++    return (Get-Command docker -ErrorAction SilentlyContinue) -ne $null
++}
++
++function Start-DockerStack {
++    param([string]$ComposeFile)
++    Write-Host 'Starting LiveKit via Docker Compose...'
++    try {
++        docker compose -f $ComposeFile up -d
++    } catch {
++        throw "Docker compose failed: $($_.Exception.Message)"
++    }
++}
++
++function Start-FallbackBinary {
++    param([string]$BinaryPath, [string]$ConfigPath)
++    if (-not (Test-Path $BinaryPath)) {
++        throw "LiveKit fallback binary not found at $BinaryPath"
++    }
++    $logDir = Resolve-ProjectPath 'logs'
++    if (-not (Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir | Out-Null }
++    $logFile = Join-Path $logDir "livekit-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
++    Write-Host "Starting LiveKit fallback binary. Logging to $logFile"
++    Start-Process -FilePath $BinaryPath -ArgumentList "--config", $ConfigPath -NoNewWindow -RedirectStandardOutput $logFile -RedirectStandardError $logFile
++}
++
++function Start-HostGui {
++    if ($NoGui) { return }
++    $guiPath = Resolve-ProjectPath 'host-gui'
++    $startScript = Join-Path $guiPath 'node_modules/.bin/electron'
++    if (-not (Test-Path $startScript)) {
++        Write-Host 'Host GUI dependencies missing. Run setup.ps1' -ForegroundColor Yellow
++        return
++    }
++    Write-Host 'Launching Host Control GUI...'
++    $npm = Get-Command npm -ErrorAction SilentlyContinue
++    if (-not $npm) {
++        $npm = Get-Command npm.cmd -ErrorAction SilentlyContinue
++    }
++    if (-not $npm) {
++        Write-Warning 'npm not found in PATH. Host GUI was not launched.'
++        return
++    }
++    Start-Process -FilePath $npm.Source -WorkingDirectory $guiPath -ArgumentList 'run', 'start'
++}
++
++function Show-Endpoints {
++    param($EnvTable)
++    $hostIp = $EnvTable['HOST_IP']
++    $httpsPort = $EnvTable['HTTPS_PORT']
++    $room = $EnvTable['LIVEKIT_ROOM']
++    $whip = $EnvTable['WHIP_URL']
++    $streamKey = $EnvTable['WHIP_STREAM_KEY']
++    $guestPort = $EnvTable['GUEST_WEB_PORT']
++    $hostDomain = $EnvTable['HOST_DOMAIN']
++
++    Write-Host '\n=== Silent Disco Endpoints ===' -ForegroundColor Cyan
++    Write-Host "LiveKit Room: $room"
++    Write-Host "WHIP URL: $whip"
++    Write-Host "Stream Key: $streamKey"
++    Write-Host "Guest URL (HTTPS): https://$hostDomain:$httpsPort"
++    Write-Host "Guest URL (HTTP fallback): http://$hostIp:$guestPort"
++    Write-Host '=============================='
++}
++
++$envTable = Import-Env
++$composeFile = Resolve-ProjectPath 'server/docker-compose.yml'
++$configPath = Resolve-ProjectPath 'server/livekit.yaml'
++$binaryPath = Resolve-ProjectPath 'server/bin/livekit-server.exe'
++
++if (Test-DockerAvailable) {
++    Start-DockerStack -ComposeFile $composeFile
++} else {
++    Start-FallbackBinary -BinaryPath $binaryPath -ConfigPath $configPath
++}
++
++Start-HostGui
++Show-Endpoints -EnvTable $envTable
++
++Write-Host '\nServer startup initiated. Use scripts/doctor.ps1 for diagnostics.' -ForegroundColor Green
+diff --git a/scripts/stop_server.ps1 b/scripts/stop_server.ps1
+new file mode 100644
+index 0000000000000000000000000000000000000000..055075107d7c36d4ac9e946d211870ea1d129c71
+--- /dev/null
++++ b/scripts/stop_server.ps1
+@@ -0,0 +1,40 @@
++[CmdletBinding()]
++param()
++
++$ErrorActionPreference = 'Stop'
++$root = Split-Path -Parent $PSScriptRoot
++
++function Resolve-ProjectPath {
++    param([string]$Relative)
++    return (Join-Path $root $Relative)
++}
++
++function Stop-DockerStack {
++    $composeFile = Resolve-ProjectPath 'server/docker-compose.yml'
++    if ((Get-Command docker -ErrorAction SilentlyContinue)) {
++        Write-Host 'Stopping Docker services...'
++        docker compose -f $composeFile down
++    }
++}
++
++function Stop-FallbackBinary {
++    $process = Get-Process -Name 'livekit-server' -ErrorAction SilentlyContinue
++    if ($process) {
++        Write-Host 'Stopping LiveKit fallback process...'
++        $process | Stop-Process -Force
++    }
++}
++
++function Stop-HostGui {
++    $process = Get-Process -Name 'HostControl' -ErrorAction SilentlyContinue
++    if ($process) {
++        Write-Host 'Closing Host Control GUI...'
++        $process | Stop-Process
++    }
++}
++
++Stop-HostGui
++Stop-FallbackBinary
++Stop-DockerStack
++
++Write-Host 'Silent Disco services stopped.' -ForegroundColor Green
+diff --git a/server/docker-compose.yml b/server/docker-compose.yml
+new file mode 100644
+index 0000000000000000000000000000000000000000..58853aed2f24f3df7883ea802345971e97ef0177
+--- /dev/null
++++ b/server/docker-compose.yml
+@@ -0,0 +1,12 @@
++version: '3.9'
++services:
++  livekit:
++    image: livekit/livekit-server:v1.6.1
++    restart: unless-stopped
++    network_mode: host
++    env_file:
++      - ../.env
++    volumes:
++      - ./livekit.yaml:/etc/livekit.yaml:ro
++      - ../certs:/certs:ro
++    command: ["--config", "/etc/livekit.yaml"]
+diff --git a/server/livekit.yaml b/server/livekit.yaml
+new file mode 100644
+index 0000000000000000000000000000000000000000..9a4cbe9c7f512fb29865fc3ec90cb5cfa52a53a7
+--- /dev/null
++++ b/server/livekit.yaml
+@@ -0,0 +1,23 @@
++log_level: info
++rtc:
++  udp_port: ${LIVEKIT_WEBRTC_PORT}
++  port_range_start: ${LIVEKIT_WEBRTC_PORT}
++  port_range_end: ${LIVEKIT_WEBRTC_PORT}
++  tcp_port: ${LIVEKIT_WEBRTC_PORT}
++  use_external_ip: true
++keys:
++  ${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}
++webhook:
++  api_key: ${LIVEKIT_API_KEY}
++  api_secret: ${LIVEKIT_API_SECRET}
++turn:
++  enabled: false
++node_selector:
++  region: local
++  zone: lan
++whip:
++  enabled: true
++  tls_cert: /certs/${HOST_DOMAIN}+2.pem
++  tls_key: /certs/${HOST_DOMAIN}+2-key.pem
++  urls:
++    - ${WHIP_URL}
